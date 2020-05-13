@@ -9,20 +9,6 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from copy import deepcopy
 
-def is_date(string, fuzzy=False):
-    """
-    Return whether the string can be interpreted as a date.
-
-    :param string: str, string to check for date
-    :param fuzzy: bool, ignore unknown tokens in string if True
-    """
-    try: 
-        parse(string, fuzzy=fuzzy)
-        return True
-
-    except ValueError:
-        return False
-
 
 data1 = pd.read_json('https://www.datos.gov.co/resource/gt2j-8ykr.json?$limit=1000000')
 data_columns=['fecha_de_notificaci_n','fis','fecha_de_muerte','fecha_diagnostico','fecha_recuperado']
@@ -182,28 +168,6 @@ app.layout = html.Div(children=[
 className='container'
 # style={'width': '600px', 'margin-right': 'auto', 'margin-left': 'auto'}
 )
-
-def takeClosest(myList, myNumber):
-    """
-    From https://stackoverflow.com/questions/12141150/from-list-of-integers-get-number-closest-to-a-given-value
-
-    Assumes myList is sorted. Returns closest value to myNumber.
-
-    If two numbers are equally close, return the smallest number.
-    """
-    pos = bisect_left(myList, myNumber)
-    if pos == 0:
-        return myList[0]
-    if pos == len(myList):
-        return myList[-1]
-    before = myList[pos - 1]
-    after = myList[pos]
-    return after
-    # if after - myNumber < myNumber - before:
-    #    return after
-    # else:
-    #    return before
-
 
 @app.callback(
     [dash.dependencies.Output('example-graph', 'figure'),dash.dependencies.Output('example-graph0', 'figure'),dash.dependencies.Output('table-fig', 'figure')],
