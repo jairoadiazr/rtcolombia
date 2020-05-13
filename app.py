@@ -227,7 +227,6 @@ def update_figure(dpto: str=None, municipio: str=None) -> list:
     cumulcases = cum_infectados - cum_recu - cum_fall
 
     # Estima rt tomando usando los días de contagio promedio
-    
     rt_raw = d_hat * np.diff(np.log(cumulcases.astype('float64')))+1
     if len(rt_raw) > 9:
         rt_filt = sgnl.filtfilt([0.3333, 0.3333, 0.3333], [1.0], rt_raw)
@@ -282,21 +281,21 @@ def update_figure(dpto: str=None, municipio: str=None) -> list:
             }
         },
         {
-        'x': time_vector[1:],
-        'y': rt_raw,
-        'hoverinfo': 'text',
-        'type': 'scatter',
-        'mode': 'lines',
-        'name': 'Rt diario',
-        'line': {
-            'color': 'lightgreen',
-            'width': 1
+            'x': time_vector[1:],
+            'y': rt_raw,
+            'hoverinfo': 'text',
+            'type': 'scatter',
+            'mode': 'lines',
+            'name': 'Rt diario',
+            'line': {
+                'color': 'lightgreen',
+                'width': 1
             }
         },
         {
             'x': time_vector[1:],
             'y': np.zeros(len(time_vector[1:])) + 1,
-            'hoverinfo': 'text',#'text+x',
+            'hoverinfo': 'text',
             'type': 'scatter',
             'mode': 'lines',
             'name': 'Rt = 1',
@@ -315,53 +314,29 @@ def update_figure(dpto: str=None, municipio: str=None) -> list:
     for trace in data_rt:
         trace['text'] = [hovertext(x, y, tick_suffix)for (x, y) in zip(trace['x'], trace['y'])]
 
+    default_dict = {
+        'yanchor': 'bottom',
+        'xref': 'x',
+        'xanchor': 'center',
+        'yref': 'y',
+        'ay': -40,
+        'ax': 0,
+        'showarrow': True,
+        'arrowhead': 2,
+    }
     cuarentenas = [
         datetime.strptime('2020-03-25', '%Y-%m-%d'),
         datetime.strptime('2020-04-11', '%Y-%m-%d'),
         datetime.strptime('2020-04-27', '%Y-%m-%d')
     ]
 
-    annotation = [
-            {
-                'yanchor': 'bottom',
-                'xref': 'x',
-                'xanchor': 'center',
-                'yref': 'y',
-                'text': '1a cuarentena',
-                'y': rt_filt[abs(time_vector[1:] - datetime.strptime('2020-03-25', '%Y-%m-%d')).argmin()],
-                'x': '2020-03-25',
-                'ay': -40,
-                'ax': 0,
-                'showarrow': True,
-                'arrowhead': 2,
-            },
-            {
-                'yanchor': 'bottom',
-                'xref': 'x',
-                'xanchor': 'center',
-                'yref': 'y',
-                'text': '2a cuarentena',
-                'y': rt_filt[abs(time_vector[1:] - datetime.strptime('2020-04-11', '%Y-%m-%d')).argmin()],
-                'x': '2020-04-11',
-                'ay': -40,
-                'ax': 0,
-                'showarrow': True,
-                'arrowhead': 2,
-            },
-            {
-                'yanchor': 'bottom',
-                'xref': 'x',
-                'xanchor': 'center',
-                'yref': 'y',
-                'text': '3a cuarentena',
-                'y': rt_filt[abs(time_vector[1:] - datetime.strptime('2020-04-27', '%Y-%m-%d')).argmin()], #0.75,
-                'x': '2020-04-27',
-                'ay': -40,
-                'ax': 0,
-                'showarrow': True,
-                'arrowhead': 2,
-            }
-    ]
+    annotation = list()
+    for i, fecha_cuarentena in enumerate(cuarentenas):
+        new_dict = deepcopy(default_dict)
+        new_dict['y'] = rt_filt[abs(time_vector[1:] - fecha_cuarentena).argmin()] 
+        new_dict['x'] = str(fecha_cuarentena)[:10]
+        new_dict['text'] = f'{i+1}ᵃ cuarentena'
+        annotation.append(new_dict)
 
     # Actualiza gráfica de infectados
     log_infectados={
