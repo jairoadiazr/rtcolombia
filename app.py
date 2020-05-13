@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
@@ -7,13 +6,8 @@ import pandas as pd
 import numpy as np
 import scipy.signal as sgnl
 import plotly.graph_objects as go
-from datetime import timedelta
-
-from bisect import bisect_left
-from datetime import datetime
+from datetime import datetime, timedelta
 from copy import deepcopy
-
-from dateutil.parser import parse
 
 def is_date(string, fuzzy=False):
     """
