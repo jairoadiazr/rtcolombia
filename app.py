@@ -9,75 +9,63 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from copy import deepcopy
 
+# Obtiene información de covid Colombia
+covid_data = pd.read_json('https://www.datos.gov.co/resource/gt2j-8ykr.json?$limit=1000000')
 
-data1 = pd.read_json('https://www.datos.gov.co/resource/gt2j-8ykr.json?$limit=1000000')
-data_columns=['fecha_de_notificaci_n','fis','fecha_de_muerte','fecha_diagnostico','fecha_recuperado']
-for column in data_columns:
-  print(column)
-  data1[column]=[i if is_date(str(i)) else np.nan for i in data1[column]]
-  data1[column]=pd.to_datetime(data1[column])
+# Crea diccionarios para renombrar columnas
+rename_dict = {
+    'id_de_caso': 'id',
+    'fecha_de_notificaci_n': 'fecha_notificacion',
+    'codigo_divipola': 'id_municipio',
+    'ciudad_de_ubicaci_n': 'municipio',
+    'departamento': 'departamento',
+    'atenci_n': 'atencion',
+    'edad': 'edad',
+    'sexo': 'sexo',
+    'tipo': 'tipo_contagio',
+    'estado': 'estado_salud',
+    'pa_s_de_procedencia': 'pais_procedencia',
+    'fis': 'fecha_sintomas',
+    'fecha_de_muerte': 'fecha_muerte',
+    'fecha_diagnostico': 'fecha_diagnostico',
+    'fecha_recuperado': 'fecha_recuperacion',
+    'fecha_reporte_web': 'fecha_reporte'
+}
 
-dptolist=[{'label':i,'value':i} for i in np.sort(data1['departamento'].unique())]
-dptolist.insert(0,{'label':'Colombia','value':'Colombia'})
+# Renombra las columnas
+covid_data = covid_data.rename(columns=rename_dict)
 
-currentYear = datetime.now().year
+# Unifica valores de las columnas
+columnas_corregir = ['municipio', 'departamento', 'atencion', 'sexo',
+                     'tipo_contagio', 'estado_salud', 'pais_procedencia']
+for col in columnas_corregir:
+    covid_data[col] = covid_data[col].fillna('-')
+    covid_data[col] = covid_data[col].apply(lambda x: x.title())
 
-fn = 'https://raw.githubusercontent.com/gschivley/climate-life-events/master/iamc_db.csv'
-df = pd.read_csv(fn)
-df['climate'] = df['Scenario'].str.split('-').str[-1]
-climates = df['climate'].unique()
-years = pd.to_datetime(df.columns[6:-1], yearfirst=True)
+# ¿Qué hacer con los pacientes recuperados sin fecha de recuperación?
+falta_fecha_recuperacion = covid_data[(covid_data['fecha_recuperacion'] == '-   -') &
+                                      (covid_data['atencion'] == 'Recuperado')].shape[0]
+if falta_fecha_recuperacion:
+    print(f'Faltantes fecha recuperación: {falta_fecha_recuperacion}')
 
-fn = 'https://raw.githubusercontent.com/gschivley/climate-life-events/master/GISS_temps.csv'
-hist = pd.read_csv(fn)
-hist['datetime'] = pd.to_datetime(hist['datetime'], yearfirst=True)
+# Fechas
+fechas = ['fecha_notificacion', 'fecha_diagnostico', 'fecha_sintomas', 
+          'fecha_muerte', 'fecha_recuperacion', 'fecha_reporte']
 
+# Reemplaza fechas con valores '-   -' o 'Asintomático' por np.datetime64('NaT')
+for fecha in fechas:
+    covid_data[fecha] = covid_data[fecha].replace(['-   -', 'Asintomático'], np.datetime64('NaT'))
+    try:
+        covid_data[fecha] = pd.to_datetime(covid_data[fecha])
+    except Exception as e:
+        print('Hay una fecha en formato incorrecto: ', e)
+        covid_data[fecha] = pd.to_datetime(covid_data[fecha], errors='coerce')
+
+# Calcula el número de días desde la fecha de inicio de síntomas hasta la fecha de recuperación
+covid_data['dias'] = (covid_data['fecha_recuperacion'] - covid_data['fecha_sintomas']).apply(lambda x: x.days)
 
 # Colors from tab10 palette
 colors = ['#d62728', '#ff7f0e', '#1f77b4'][::-1]
-
-# for idx, climate in enumerate(['Low', 'Mid', 'High']):
-#     trace = {
-#         'x': years,
-#         'y': df.loc[df['name'] == climate, '2010':'2100'].mean(),
-#         'hoverinfo': 'text',#'text+x',
-#         'showlegend': False,
-#         'type': 'scatter',
-#         'mode': 'lines',
-#         'name': climate,
-#         'line': {'color': 'rgb(33, 33, 33)'}
-#     }
-#     data.append(trace)
-
-# # for idx, climate in enumerate(climates):
-# for idx, climate in enumerate(['Low', 'Mid', 'High']):
-#     trace = {
-#         'x': years,
-#         'y': df.loc[df['name'] == climate, '2010':'2100'].min(),
-#         'hoverinfo': 'text',#'text+x',
-#         'showlegend': False,
-#         'type': 'scatter',
-#         'mode': 'lines',
-#         'name': 'min {}'.format(climate),
-#         'line': {'color': colors[idx],
-#                  'width': 0.5}
-#     }
-#     data.append(trace)
-
-#     trace = {
-#         'x': years,
-#         'y': df.loc[df['name'] == climate, '2010':'2100'].max(),
-#         'hoverinfo': 'text',#'text+x',
-#         'type': 'scatter',
-#         'fill': 'tonexty',
-#         'mode': 'lines',
-#         'name': climate,
-#         'line': {'color': colors[idx],
-#                  'width': 0.5}
-#     }
-#     data.append(trace)
-
-# Define separate traces for units
 
 external_stylesheets = ['https://cdn.rawgit.com/gschivley/8040fc3c7e11d2a4e7f0589ffc829a02/raw/fe763af6be3fc79eca341b04cd641124de6f6f0d/dash.css']
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
