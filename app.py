@@ -69,92 +69,85 @@ colors = ['#d62728', '#ff7f0e', '#1f77b4'][::-1]
 
 external_stylesheets = ['https://cdn.rawgit.com/gschivley/8040fc3c7e11d2a4e7f0589ffc829a02/raw/fe763af6be3fc79eca341b04cd641124de6f6f0d/dash.css']
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
-# app.scripts.config.serve_locally=True
-# app.css.config.serve_locally=True
-# app.config.supress_callback_exceptions=True
-#app.css.append_css({'external_url':
-#                    'https://cdn.rawgit.com/gschivley/8040fc3c7e11d2a4e7f0589ffc829a02/raw/fe763af6be3fc79eca341b04cd641124de6f6f0d/dash.css'
-                    # 'https://rawgit.com/gschivley/8040fc3c7e11d2a4e7f0589ffc829a02/raw/8daf84050707365c5e266591d65232607f802a43/dash.css'
-
-#                    })
 app.title = 'Rt Colombia'
 server = app.server
 
 
-app.layout = html.Div(children=[
-    # html.Link(href='/assets/stylesheet.css', rel='stylesheet'),
-    html.H1(
-        children='COVID19 Colombia',
-        style={'text-align': 'center'}
-    ),
-    html.H3(
-        children='Cálculo de Rt en tiempo real',
-        style={'text-align': 'center'}
-    ),
-    html.H6(
-        [
-        html.Label('Departamento o distrito especial'),
-        # dcc.Input(id='child_birth', value=0, type='number'),
-        dcc.Dropdown(
-            id='units',
-            options=dptolist,
-            value='Atlántico'
-        )
-    ]
-    ),
-    #html.Div([
-    #     html.P(id = "status",
-    #        children=["init"],
-    #        style={'width': '400px', 'margin-right': 'auto',
-    #       'margin-left': 'auto', 'text-align': 'left',"white-space": "pre"})],
-    #       className='input-wrapper'),
-    html.Div(
+app.layout = html.Div(
     [
-        dcc.Graph(
-            id='example-graph',
-            config={
-                'modeBarButtonsToRemove': ['autoScale2d', 'select2d', 'zoom2d',
-                                           'pan2d', 'toggleSpikelines',
-                                           'hoverCompareCartesian',
-                                           'zoomOut2d', 'zoomIn2d',
-                                           'hoverClosestCartesian',
-                                           # 'sendDataToCloud',
-                                           'resetScale2d']
-            }
+        html.H1(
+            children='COVID19 Colombia',
+            style={'text-align': 'center'}
         ),
-                dcc.Graph(id='table-fig',figure={
-            'layout': {'height':400,            'margin': {
-                'l': 80,
-                'r': 50,
-                't': 40
-            }}}
+        html.H3(
+            children='Cálculo de Rt en tiempo real',
+            style={'text-align': 'center'}
         ),
-        dcc.Graph(
-            id='example-graph0',
-            config={
-                'modeBarButtonsToRemove': ['autoScale2d', 'select2d', 'zoom2d',
-                                           'pan2d', 'toggleSpikelines',
-                                           'hoverCompareCartesian',
-                                           'zoomOut2d', 'zoomIn2d',
-                                           'hoverClosestCartesian',
-                                           # 'sendDataToCloud',
-                                           'resetScale2d']
-            }
-        )
-        ],
-        # style={'width': '75%', 'margin-right': 'auto', 'margin-left': 'auto'}
+        html.H6(
+            [
+                html.Label('Departamento o distrito especial'),
+                dcc.Dropdown(
+                    id='departamento',
+                    options=[{'label': dpto, 'value': dpto} for dpto in np.sort(covid_data['departamento'].unique())],
+                    placeholder='Seleccione un departamento o distrito especial',
+                ),
+                html.Label('Municipio'),
+                dcc.Dropdown(
+                    id='municipio',
+                    options=[{'label': city, 'value': city} for city in np.sort(covid_data['municipio'].unique())],
+                    placeholder='Seleccione un municipio',
+                )
+            ]
         ),
-        dcc.Markdown('Elaborado por:'),
-        dcc.Markdown('- Jairo Díaz, División de Ciencias Básicas, Universidad del Norte - Barranquilla'),
-        dcc.Markdown('- Jairo Espinosa, Facultad de Minas, Universidad Nacional de Colombia - Medellín'),
-        dcc.Markdown('- Bernardo Uribe, División de Ciencias Básicas, Universidad del Norte - Barranquilla'),
-        dcc.Markdown('La información completa de este proyecto se puede consultar en :'),
-        dcc.Markdown('https://sites.google.com/site/bernardouribejongbloed/home/RtColombia'),
-        dcc.Markdown('Sociedad Colombiana de Matemáticas')
-
-],
+        html.Div(
+            [
+                dcc.Graph(
+                    id='example-graph',
+                    config={
+                        'modeBarButtonsToRemove': [
+                            'autoScale2d', 'select2d', 'zoom2d',
+                            'pan2d', 'toggleSpikelines',
+                            'hoverCompareCartesian',
+                            'zoomOut2d', 'zoomIn2d',
+                            'hoverClosestCartesian',
+                            'resetScale2d'
+                        ]
+                    }
+                ),
+                dcc.Graph(
+                    id='table-fig',
+                    figure={
+                        'layout': {
+                            'height':400,
+                            'margin': {'l': 80, 'r': 50, 't': 40}
+                        }
+                    }
+                ),
+                dcc.Graph(
+                    id='example-graph0',
+                    config={
+                        'modeBarButtonsToRemove': [
+                            'autoScale2d', 'select2d', 
+                            'zoom2d', 'pan2d', 
+                            'toggleSpikelines',
+                            'hoverCompareCartesian',
+                            'zoomOut2d', 'zoomIn2d',
+                            'hoverClosestCartesian',
+                            'resetScale2d'
+                        ]
+                    }
+                )
+            ],
+        ),
+            dcc.Markdown('Elaborado por:'),
+            dcc.Markdown('- Jairo Díaz, División de Ciencias Básicas, Universidad del Norte - Barranquilla'),
+            dcc.Markdown('- Jairo Espinosa, Facultad de Minas, Universidad Nacional de Colombia - Medellín'),
+            dcc.Markdown('- Bernardo Uribe, División de Ciencias Básicas, Universidad del Norte - Barranquilla'),
+            dcc.Markdown('La información completa de este proyecto se puede consultar en :'),
+            dcc.Markdown('https://sites.google.com/site/bernardouribejongbloed/home/RtColombia'),
+            dcc.Markdown('Sociedad Colombiana de Matemáticas')
+    ],
 className='container'
-# style={'width': '600px', 'margin-right': 'auto', 'margin-left': 'auto'}
 )
 
 @app.callback(
