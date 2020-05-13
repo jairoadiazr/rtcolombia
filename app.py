@@ -213,10 +213,10 @@ def update_figure(dpto: str=None, municipio: str=None) -> list:
     df_covid = df1.merge(df2, how='outer', left_index=True, right_index=True).merge(df3, how='outer', left_index=True, right_index=True, sort=True).fillna(0)
     
     # Crea vector de tiempo para graficar
-    time_vector = df_covid.index
+    time_vector = df_covid.index    
 
     # Imprime DataFrame con los infectados, recuperados y fallecidos por día
-    print(df_covid)
+    print(df_covid.head())
 
     df_array = df_covid.to_numpy()
     
@@ -225,6 +225,9 @@ def update_figure(dpto: str=None, municipio: str=None) -> list:
     cum_recu = np.cumsum(df_array[:, 1], 0)
     cum_fall = np.cumsum(df_array[:, 2], 0)
     cumulcases = cum_infectados - cum_recu - cum_fall
+
+    # Log infectados
+    log_infect = np.log(cumulcases.astype('float64'))
 
     # Estima rt tomando usando los días de contagio promedio
     rt_raw = d_hat * np.diff(np.log(cumulcases.astype('float64')))+1
@@ -247,15 +250,15 @@ def update_figure(dpto: str=None, municipio: str=None) -> list:
     else:
         rt_filt_min = rt_raw_min
 
+    # rt_1
+    rt_1 = np.zeros(len(time_vector)) + 1
 
-    def hovertext(datetime, temp, suffix):
-        hover_string = f'{datetime}<br>{temp:.2f}{suffix}'
-        return hover_string
+    tick_suffix = ' '
 
     data_infectados = [
         {
             'x': time_vector,
-            'y': np.log(cumulcases.astype('float64')),
+            'y': log_infect,
             'hoverinfo': 'text',
             'type': 'scatter',
             'mode': 'lines',
@@ -263,13 +266,14 @@ def update_figure(dpto: str=None, municipio: str=None) -> list:
             'line': {
                 'color': colors[0],
                 'width': 1
-            }
+            },
+            'text': [f'{date}<br>{val:.2f} ' for date, val in zip(time_vector, log_infect)]
         }
     ]
     
     data_rt = [
         {
-            'x': time_vector[1:],
+            'x': time_vector,
             'y': rt_filt,
             'hoverinfo': 'text',
             'type': 'scatter',
@@ -278,10 +282,11 @@ def update_figure(dpto: str=None, municipio: str=None) -> list:
             'line': {
                 'color': 'darkgreen',
                 'width': 1
-            }
+            },
+            'text': [f'{date}<br>{val:.2f} ' for date, val in zip(time_vector, rt_filt)]
         },
         {
-            'x': time_vector[1:],
+            'x': time_vector,
             'y': rt_raw,
             'hoverinfo': 'text',
             'type': 'scatter',
@@ -290,11 +295,12 @@ def update_figure(dpto: str=None, municipio: str=None) -> list:
             'line': {
                 'color': 'lightgreen',
                 'width': 1
-            }
+            },
+            'text': [f'{date}<br>{val:.2f} ' for date, val in zip(time_vector, rt_raw)]
         },
         {
-            'x': time_vector[1:],
-            'y': np.zeros(len(time_vector[1:])) + 1,
+            'x': time_vector,
+            'y': rt_1,
             'hoverinfo': 'text',
             'type': 'scatter',
             'mode': 'lines',
@@ -303,16 +309,10 @@ def update_figure(dpto: str=None, municipio: str=None) -> list:
                 'color': 'blue',
                 'width': 1,
                 'dash': 'dash'
-            }
+            },
+            'text': [f'{date}<br>{val:.2f} ' for date, val in zip(time_vector, rt_1)]
         }
     ]
-
-    # Set units on axis and scale number for imperial units
-    tick_suffix = ' '
-    for trace in data_infectados:
-        trace['text'] = [hovertext(x, y, tick_suffix) for (x, y) in zip(trace['x'], trace['y'])]
-    for trace in data_rt:
-        trace['text'] = [hovertext(x, y, tick_suffix)for (x, y) in zip(trace['x'], trace['y'])]
 
     default_dict = {
         'yanchor': 'bottom',
@@ -335,7 +335,7 @@ def update_figure(dpto: str=None, municipio: str=None) -> list:
         new_dict = deepcopy(default_dict)
         new_dict['y'] = rt_filt[abs(time_vector[1:] - fecha_cuarentena).argmin()] 
         new_dict['x'] = str(fecha_cuarentena)[:10]
-        new_dict['text'] = f'{i+1}ᵃ cuarentena'
+        new_dict['text'] = f'{i + 1}ᵃ cuarentena'
         annotation.append(new_dict)
 
     # Actualiza gráfica de infectados
@@ -348,8 +348,7 @@ def update_figure(dpto: str=None, municipio: str=None) -> list:
                 "x": 0.5,
                 'xanchor': 'center'
             },
-            'margin': {'l': 80, 'r': 50, 't': 40
-            },
+            'margin': {'l': 80, 'r': 50, 't': 40},
             'hovermode': 'closest',
             'yaxis': {
                 'ticksuffix': tick_suffix,
@@ -395,7 +394,7 @@ def update_figure(dpto: str=None, municipio: str=None) -> list:
         [df_infect.shape[0], df_casa.shape[0], df_hosp.shape[0], df_uci.shape[0]]
     ]
 
-    fig = go.Figure(
+    table = go.Figure(
         data=[
             go.Table(
                 columnorder = [1,2,3,4],
@@ -425,7 +424,7 @@ def update_figure(dpto: str=None, municipio: str=None) -> list:
         ]
     )
 
-    return rt_graph, log_infectados, fig
+    return rt_graph, log_infectados, table
 
 if __name__ == '__main__':
     app.run_server(debug=True)
