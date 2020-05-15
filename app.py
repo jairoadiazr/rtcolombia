@@ -61,6 +61,9 @@ for fecha in fechas:
         print('Hay una fecha en formato incorrecto: ', e)
         covid_data[fecha] = pd.to_datetime(covid_data[fecha], errors='coerce')
 
+# Para los fallecidos, se asigna su fecha de recuperación como su fecha de muerte
+covid_data.loc[covid_data['estado_salud'] == 'Fallecido', 'fecha_recuperacion'] = covid_data[covid_data['estado_salud'] == 'Fallecido']['fecha_muerte']
+
 # Calcula el número de días desde la fecha de inicio de síntomas hasta la fecha de recuperación
 covid_data['dias'] = (covid_data['fecha_recuperacion'] - covid_data['fecha_sintomas']).apply(lambda x: x.days)
 
@@ -185,20 +188,20 @@ def update_figure(dpto: str=None, municipio: str=None) -> list:
     df_uci = df_infect[df_infect['atencion'] == 'Hospital Uci']
     df_casa = df_infect[df_infect['atencion'] == 'Casa']
     
-    # Si para el DataFrame actual no se tiene información, entonces se usa el general
-    if df['dias'].count():
+    # Si para el DataFrame actual no se tiene información suficiente, se usa la información total del país
+    if df['dias'].count() >= 20:
         df_days = df
     else:
         df_days = covid_data
     
     # Calcula media y mediana de tiempo de recuperación 
-    d_hat = np.nanmean(df_days['dias'])
-    d_median = np.nanmedian(df_days['dias'])
+    d_mean = np.nanmean(df_days['dias'])
+    d_hat = np.nanmedian(df_days['dias'])
     d_hat_max = np.nanquantile(df_days['dias'], 0.975)
     d_hat_min = np.nanquantile(df_days['dias'], 0.025)
 
-    print('Media de días = ', d_hat)
-    print('Mediana de días = ', d_median)
+    print('Media de días = ', d_mean)
+    print('Mediana de días = ', d_hat)
 
     # Número de infectados por fecha
     df1 = df_no_imp.groupby('fecha_sintomas').count()[['id']].rename(columns={'id': 'infectados'})
@@ -223,8 +226,8 @@ def update_figure(dpto: str=None, municipio: str=None) -> list:
     # Crea array con el número de infectados acumulado por día
     cum_infectados = np.cumsum(df_array[:, 0], 0)
     cum_recu = np.cumsum(df_array[:, 1], 0)
-    cum_fall = np.cumsum(df_array[:, 2], 0)
-    cumulcases = cum_infectados - cum_recu - cum_fall
+    # cum_fall = np.cumsum(df_array[:, 2], 0)
+    cumulcases = cum_infectados - cum_recu
 
     # Log infectados
     log_infect = np.log(cumulcases.astype('float64'))
@@ -366,7 +369,7 @@ def update_figure(dpto: str=None, municipio: str=None) -> list:
     rt_graph = {
         'data': data_rt,
         'layout': {
-            'title': f'Tiempo promedio de recuperación: {round(d_hat, 2)} días',
+            'title': f'Tiempo medio de recuperación: {round(d_hat, 2)} días',
             'legend': {
                 'orientation': 'h',
                 "x": 0.5,
