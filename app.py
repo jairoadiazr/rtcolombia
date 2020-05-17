@@ -1,13 +1,14 @@
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 import pandas as pd
 import numpy as np
 import scipy.signal as sgnl
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from copy import deepcopy
+import plotly.graph_objects as go
 
 # Fecha reporte
 current_date = datetime.now().date()
@@ -83,6 +84,16 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 app.title = 'Rt Colombia'
 server = app.server
 
+graph_config = {
+    'modeBarButtonsToRemove': [
+        'autoScale2d', 'select2d', 'zoom2d',
+        'pan2d', 'toggleSpikelines',
+        'hoverCompareCartesian',
+        'zoomOut2d', 'zoomIn2d',
+        'hoverClosestCartesian',
+        'resetScale2d'
+    ]
+}
 
 app.layout = html.Div(
     [
@@ -123,39 +134,75 @@ app.layout = html.Div(
             [
                 dcc.Graph(
                     id='rt-graph',
-                    config={
-                        'modeBarButtonsToRemove': [
-                            'autoScale2d', 'select2d', 'zoom2d',
-                            'pan2d', 'toggleSpikelines',
-                            'hoverCompareCartesian',
-                            'zoomOut2d', 'zoomIn2d',
-                            'hoverClosestCartesian',
-                            'resetScale2d'
-                        ]
-                    }
+                    config=graph_config,
+                    figure=go.Figure(
+                        layout={
+                            'legend': {
+                                'orientation': 'h',
+                                "x": 0.5,
+                                'xanchor': 'center'
+                            },
+                            'title': {'text': ''},
+                            'margin': {'l': 80, 'r': 50, 't': 40},
+                            'hovermode': 'closest',
+                            'plot_bgcolor': 'rgba(0,0,0,0)',
+                            'yaxis': {
+                                'title': 'Rt',
+                                'showgrid': True,
+                                'gridcolor': 'whitesmoke'
+                            },
+                            'xaxis': {
+                                'showgrid': True,
+                                'gridcolor': 'whitesmoke' 
+                            },
+                        }
+                    )
                 ),
                 dcc.Graph(
                     id='table-fig',
-                    figure={
-                        'layout': {
-                            'height':400,
-                            'margin': {'l': 80, 'r': 50, 't': 40}
-                        }
-                    }
+                    figure=go.Figure(
+                        go.Table(
+                            cells={
+                                'line_color': 'darkslategray',
+                                'fill_color': ['lightgray', 'white','lightgray', 'white'],
+                                'font_size': 12,
+                                'height': 30
+                            },
+                            header = {
+                                'values': ['Casos', 'Número', 'Infectados', 'Número'],
+                                'line_color': 'darkslategray',
+                                'fill_color': 'gray',
+                                'font': {'color':'white', 'size': 12},
+                                'height': 30
+                            },
+                        )
+                    )
                 ),
                 dcc.Graph(
                     id='log_infectados',
-                    config={
-                        'modeBarButtonsToRemove': [
-                            'autoScale2d', 'select2d', 
-                            'zoom2d', 'pan2d', 
-                            'toggleSpikelines',
-                            'hoverCompareCartesian',
-                            'zoomOut2d', 'zoomIn2d',
-                            'hoverClosestCartesian',
-                            'resetScale2d'
-                        ]
-                    }
+                    config=graph_config,
+                    figure=go.Figure(
+                        layout={
+                            'height':400,
+                            'legend': {
+                                'orientation': 'h',
+                                "x": 0.5,
+                                'xanchor': 'center'
+                            },
+                            'margin': {'l': 80, 'r': 50, 't': 40},
+                            'hovermode': 'closest',
+                            'plot_bgcolor': 'rgba(0,0,0,0)',
+                            'yaxis': {
+                                'title': 'log(infectados)',
+                                'showgrid': True,
+                                'gridcolor': 'whitesmoke'
+                            },
+                            'xaxis': {
+                                'showgrid': True,
+                                'gridcolor': 'whitesmoke' 
+                            },
+                        }
+                    )
                 )
             ],
         ),
@@ -182,9 +229,14 @@ className='container'
         Input('fecha', 'end_date'),
         Input('departamento', 'value'),
         Input('municipio', 'value'),
+    ],
+    [
+        State('rt-graph', 'figure'),
+        State('log_infectados', 'figure'),
+        State('table-fig', 'figure'),
     ]
 )
-def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, municipio: str=None) -> list:
+def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, municipio: str=None, rt_graph=None, log_infectados=None, table_fig=None) -> list:
     if dpto is None and municipio is None:
         df = covid_data
     elif municipio is None:
@@ -289,64 +341,48 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
     # rt_1
     rt_1 = np.zeros(len(time_vector)) + 1
 
-    tick_suffix = ' '
-
+    # Actualiza gráfica de infectados
     data_infectados = [
         {
             'x': time_vector,
             'y': log_infect,
-            'hoverinfo': 'text',
-            'type': 'scatter',
             'mode': 'lines',
             'name': 'log(infectados)',
-            'line': {
-                'color': colors[0],
-                'width': 1
-            },
-            'text': [f'{date}<br>{val:.2f} ' for date, val in zip(time_vector, log_infect)]
         }
     ]
-    
+    log_infectados['data'] = data_infectados
+
+    # Actualiza gráfica de rt
     data_rt = [
         {
             'x': time_vector,
             'y': rt_filt,
-            'hoverinfo': 'text',
-            'type': 'scatter',
             'mode': 'lines',
             'name': 'Rt suavizado',
-            'line': {
-                'color': 'darkgreen',
-                'width': 1
-            },
-            'text': [f'{date}<br>{val:.2f} ' for date, val in zip(time_vector, rt_filt)]
         },
-        {
-            'x': time_vector,
-            'y': rt_raw,
-            'hoverinfo': 'text',
-            'type': 'scatter',
-            'mode': 'lines',
-            'name': 'Rt diario',
-            'line': {
-                'color': 'lightgreen',
-                'width': 1
-            },
-            'text': [f'{date}<br>{val:.2f} ' for date, val in zip(time_vector, rt_raw)]
-        },
+        # {
+        #     'x': time_vector,
+        #     'y': rt_raw,
+        #     'hoverinfo': 'text',
+        #     'type': 'scatter',
+        #     'mode': 'lines',
+        #     'name': 'Rt diario',
+        #     'line': {
+        #         'color': 'lightgreen',
+        #         'width': 1
+        #     },
+        #     'text': [f'{date}<br>{val:.2f} ' for date, val in zip(time_vector, rt_raw)]
+        # },
         {
             'x': time_vector,
             'y': rt_1,
-            'hoverinfo': 'text',
-            'type': 'scatter',
-            'mode': 'lines',
+            'hoverinfo': 'none',
             'name': 'Rt = 1',
             'line': {
                 'color': 'blue',
                 'width': 1,
                 'dash': 'dash'
             },
-            'text': [f'{date}<br>{val:.2f} ' for date, val in zip(time_vector, rt_1)]
         }
     ]
 
@@ -366,7 +402,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         datetime(2020, 4, 27),
     ]
 
-    annotation = list()
+    annotations = list()
     for i, fecha_cuarentena in enumerate(cuarentenas):
         new_dict = deepcopy(annotation_dict)
         if fecha_cuarentena in time_vector:
@@ -375,57 +411,13 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
             continue
         new_dict['x'] = fecha_cuarentena
         new_dict['text'] = f'{i + 1}ᵃ cuarentena'
-        annotation.append(new_dict)
+        annotations.append(new_dict)
 
-    # Actualiza gráfica de infectados
-    log_infectados={
-        'data': data_infectados,
-        'layout': {
-            'height':400,
-            'legend': {
-                'orientation': 'h',
-                "x": 0.5,
-                'xanchor': 'center'
-            },
-            'margin': {'l': 80, 'r': 50, 't': 40},
-            'hovermode': 'closest',
-            'yaxis': {
-                'ticksuffix': tick_suffix,
-                'title': 'log(infectados)',
-                'showgrid': True,
-            },
-            'xaxis': {
-                'range': [start_date, end_date],
-                'showgrid': True,
-            },
-        }
-    }
-
-    # Actualiza gráfica de rt
-    rt_graph = {
-        'data': data_rt,
-        'layout': {
-            'title': f'Tiempo medio de recuperación: {round(d_hat, 2)} días',
-            'legend': {
-                'orientation': 'h',
-                "x": 0.5,
-                'xanchor': 'center'
-            },
-            'margin': {'l': 80, 'r': 50, 't': 40},
-            'annotations': annotation,
-            'hovermode': 'closest',
-            'yaxis': {
-                'ticksuffix': tick_suffix,
-                'title': 'Rt',
-                'showgrid': True,
-            },
-            'xaxis': {
-                'range': [start_date, end_date],
-                'showgrid': True,
-            },
-        }
-    }
+    rt_graph['data'] = data_rt
+    rt_graph['layout']['title']['text'] = f'Tiempo medio de recuperación: {round(d_hat, 2)} días'
+    rt_graph['layout']['annotations'] = annotations
     
+    # Actualiza tabla
     table_values = [
         ['Positivos', 'Importados', 'Recuperados','Fallecidos'], 
         list(map(thousand_sep, [df.shape[0], df_imp.shape[0], df_recu.shape[0], df_fall.shape[0]])),
@@ -433,37 +425,9 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         list(map(thousand_sep, [df_infect.shape[0], df_casa.shape[0], df_hosp.shape[0], df_uci.shape[0]]))
     ]
 
-    table = go.Figure(
-        data=[
-            go.Table(
-                columnorder = [1,2,3,4],
-                columnwidth = [400,400,400,400],
-                header = dict(
-                    values = [
-                        ['Casos'],
-                        ['Número'],
-                        ['Infectados'],
-                        ['Número']
-                    ],
-                    line_color='darkslategray',
-                    fill_color='gray',
-                    align=['center'],
-                    font=dict(color='white', size=12),
-                    height=30
-                ),
-                cells=dict(
-                    values=table_values,
-                    line_color='darkslategray',
-                    fill=dict(color=['lightgray', 'white','lightgray', 'white']),
-                    align=['center'],
-                    font_size=12,
-                    height=30
-                )
-            )
-        ]
-    )
+    table_fig['data'][0]['cells']['values'] = table_values
 
-    return rt_graph, log_infectados, table
+    return rt_graph, log_infectados, table_fig
 
 if __name__ == '__main__':
     app.run_server(debug=True, host='0.0.0.0')
