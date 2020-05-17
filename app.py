@@ -70,6 +70,11 @@ covid_data.loc[covid_data['estado_salud'] == 'Fallecido', 'fecha_recuperacion'] 
 # Calcula el número de días desde la fecha de inicio de síntomas hasta la fecha de recuperación
 covid_data['dias'] = (covid_data['fecha_recuperacion'] - covid_data['fecha_sintomas']).apply(lambda x: x.days)
 
+# Funciones auxiliares
+
+def thousand_sep(n: int) -> str:
+    return f'{n:,}'
+
 # Colors from tab10 palette
 colors = ['#d62728', '#ff7f0e', '#1f77b4'][::-1]
 
@@ -423,9 +428,9 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
     
     table_values = [
         ['Positivos', 'Importados', 'Recuperados','Fallecidos'], 
-        [df.shape[0], df_imp.shape[0], df_recu.shape[0], df_fall.shape[0]],
+        list(map(thousand_sep, [df.shape[0], df_imp.shape[0], df_recu.shape[0], df_fall.shape[0]])),
         ['Activos', 'En casa', 'Hospitalizados', 'En UCI'],
-        [df_infect.shape[0], df_casa.shape[0], df_hosp.shape[0], df_uci.shape[0]]
+        list(map(thousand_sep, [df_infect.shape[0], df_casa.shape[0], df_hosp.shape[0], df_uci.shape[0]]))
     ]
 
     table = go.Figure(
