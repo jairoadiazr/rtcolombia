@@ -9,6 +9,9 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from copy import deepcopy
 
+# Fecha reporte
+current_date = datetime.now().date()
+
 # Obtiene información de covid Colombia
 covid_data = pd.read_json('https://www.datos.gov.co/resource/gt2j-8ykr.json?$limit=1000000')
 
@@ -99,6 +102,15 @@ app.layout = html.Div(
                     id='municipio',
                     options=[{'label': city, 'value': city} for city in np.sort(covid_data['municipio'].unique())],
                     placeholder='Seleccione un municipio',
+                ),
+                html.Label('Filtro de fecha'),
+                dcc.DatePickerRange(
+                    id='fecha',
+                    min_date_allowed=covid_data['fecha_sintomas'].min(),
+                    max_date_allowed=current_date,
+                    initial_visible_month=current_date,
+                    end_date=current_date,
+                    start_date=current_date - timedelta(days=30)
                 )
             ]
         ),
@@ -145,6 +157,7 @@ app.layout = html.Div(
             dcc.Markdown('Elaborado por:'),
             dcc.Markdown('- Jairo Díaz, División de Ciencias Básicas, Universidad del Norte - Barranquilla'),
             dcc.Markdown('- Jairo Espinosa, Facultad de Minas, Universidad Nacional de Colombia - Medellín'),
+            dcc.Markdown('- Héctor López'),
             dcc.Markdown('- Bernardo Uribe, División de Ciencias Básicas, Universidad del Norte - Barranquilla'),
             dcc.Markdown('La información completa de este proyecto se puede consultar en :'),
             dcc.Markdown('https://sites.google.com/site/bernardouribejongbloed/home/RtColombia'),
@@ -155,16 +168,18 @@ className='container'
 
 @app.callback(
     [
-        dash.dependencies.Output('rt-graph', 'figure'),
-        dash.dependencies.Output('log_infectados', 'figure'),
-        dash.dependencies.Output('table-fig', 'figure'),
+        Output('rt-graph', 'figure'),
+        Output('log_infectados', 'figure'),
+        Output('table-fig', 'figure'),
     ],
     [
-        dash.dependencies.Input('departamento', 'value'),
-        dash.dependencies.Input('municipio', 'value'),
+        Input('fecha', 'start_date'),
+        Input('fecha', 'end_date'),
+        Input('departamento', 'value'),
+        Input('municipio', 'value'),
     ]
 )
-def update_figure(dpto: str=None, municipio: str=None) -> list:
+def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, municipio: str=None) -> list:
     if dpto is None and municipio is None:
         df = covid_data
     elif municipio is None:
@@ -213,21 +228,34 @@ def update_figure(dpto: str=None, municipio: str=None) -> list:
     df3 = df_fall.groupby('fecha_muerte').count()[['id']].rename(columns={'id': 'fallecidos'})
 
     # Mergea (y ordena) los DataFrames
-    df_covid = df1.merge(df2, how='outer', left_index=True, right_index=True).merge(df3, how='outer', left_index=True, right_index=True, sort=True).fillna(0)
-    
+    df_covid = df1.merge(df2, how='outer', left_index=True, right_index=True).merge(df3, how='outer', left_index=True, right_index=True)
+
+    # Fecha primer caso
+    first_date = df_covid.index.min()
+
+    # Crea DataFrame de fechas continuas desde el principio de la epidemia
+    df_dates = pd.DataFrame(index=pd.date_range(start=first_date, end=current_date))
+
+    # Rellena el DataFrame para que en los días que no hubo casos reportados asignar el valor de 0
+    df_covid = df_dates.merge(df_covid, how='left', left_index=True, right_index=True, sort=True).fillna(0).cumsum()
+
+    # Filtra el DataFrame con las fechas indicadas
+    df_covid = df_covid[(start_date <= df_covid.index) & (df_covid.index <= end_date)]
+
     # Crea vector de tiempo para graficar
-    time_vector = df_covid.index    
+    time_vector = list(df_covid.index)
 
     # Imprime DataFrame con los infectados, recuperados y fallecidos por día
     print(df_covid.head())
-
-    df_array = df_covid.to_numpy()
+    print(df_covid.tail())
     
     # Crea array con el número de infectados acumulado por día
-    cum_infectados = np.cumsum(df_array[:, 0], 0)
-    cum_recu = np.cumsum(df_array[:, 1], 0)
-    # cum_fall = np.cumsum(df_array[:, 2], 0)
+    cum_infectados = df_covid['infectados']
+    cum_recu = df_covid['recuperados']
     cumulcases = cum_infectados - cum_recu
+    print('Infectados acumulados', cum_infectados, sep='\n', end='\n\n')
+    print('Recuperados acumulados', cum_recu, sep='\n', end='\n\n')
+    print('Actuales acumulados', cumulcases, sep='\n', end='\n\n')
 
     # Log infectados
     log_infect = np.log(cumulcases.astype('float64'))
@@ -317,7 +345,7 @@ def update_figure(dpto: str=None, municipio: str=None) -> list:
         }
     ]
 
-    default_dict = {
+    annotation_dict = {
         'yanchor': 'bottom',
         'xref': 'x',
         'xanchor': 'center',
@@ -328,16 +356,19 @@ def update_figure(dpto: str=None, municipio: str=None) -> list:
         'arrowhead': 2,
     }
     cuarentenas = [
-        datetime.strptime('2020-03-25', '%Y-%m-%d'),
-        datetime.strptime('2020-04-11', '%Y-%m-%d'),
-        datetime.strptime('2020-04-27', '%Y-%m-%d')
+        datetime(2020, 3, 25),
+        datetime(2020, 4, 11),
+        datetime(2020, 4, 27),
     ]
 
     annotation = list()
     for i, fecha_cuarentena in enumerate(cuarentenas):
-        new_dict = deepcopy(default_dict)
-        new_dict['y'] = rt_filt[abs(time_vector[1:] - fecha_cuarentena).argmin()] 
-        new_dict['x'] = str(fecha_cuarentena)[:10]
+        new_dict = deepcopy(annotation_dict)
+        if fecha_cuarentena in time_vector:
+            new_dict['y'] = rt_filt[time_vector.index(fecha_cuarentena)]
+        else:
+            continue
+        new_dict['x'] = fecha_cuarentena
         new_dict['text'] = f'{i + 1}ᵃ cuarentena'
         annotation.append(new_dict)
 
@@ -359,7 +390,7 @@ def update_figure(dpto: str=None, municipio: str=None) -> list:
                 'showgrid': True,
             },
             'xaxis': {
-                'range': [min(time_vector[1:]), max(time_vector[1:])],
+                'range': [start_date, end_date],
                 'showgrid': True,
             },
         }
@@ -384,7 +415,7 @@ def update_figure(dpto: str=None, municipio: str=None) -> list:
                 'showgrid': True,
             },
             'xaxis': {
-                'range': [min(time_vector[1:]), max(time_vector[1:])],
+                'range': [start_date, end_date],
                 'showgrid': True,
             },
         }
@@ -406,7 +437,7 @@ def update_figure(dpto: str=None, municipio: str=None) -> list:
                     values = [
                         ['Casos'],
                         ['Número'],
-                        ['INFECTADOS'],
+                        ['Infectados'],
                         ['Número']
                     ],
                     line_color='darkslategray',
