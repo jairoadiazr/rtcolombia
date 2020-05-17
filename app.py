@@ -466,4 +466,4 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
     return rt_graph, log_infectados, table
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=True, host='0.0.0.0')
