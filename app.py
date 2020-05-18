@@ -1,4 +1,5 @@
 import dash
+import dash_table
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
@@ -203,6 +204,9 @@ app.layout = html.Div(
                             },
                         }
                     )
+                ),
+                dash_table.DataTable(
+                    id='days_table',
                 )
             ],
         ),
@@ -223,6 +227,8 @@ className='container'
         Output('rt-graph', 'figure'),
         Output('log_infectados', 'figure'),
         Output('table-fig', 'figure'),
+        Output('days_table', 'columns'),
+        Output('days_table', 'data')
     ],
     [
         Input('fecha', 'start_date'),
@@ -276,13 +282,13 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
     print('Mediana de días = ', d_hat)
 
     # Número de infectados por fecha
-    df1 = df_no_imp.groupby('fecha_sintomas').count()[['id']].rename(columns={'id': 'infectados'})
+    df1 = df_no_imp.groupby('fecha_sintomas').count()[['id']].rename(columns={'id': 'nuevos_infectados'})
     
     # Número de recuperados por fecha
-    df2 = df_recu.groupby('fecha_recuperacion').count()[['id']].rename(columns={'id': 'recuperados'})
+    df2 = df_recu.groupby('fecha_recuperacion').count()[['id']].rename(columns={'id': 'nuevos_recuperados'})
 
     # Número de fallecidos por fecha
-    df3 = df_fall.groupby('fecha_muerte').count()[['id']].rename(columns={'id': 'fallecidos'})
+    df3 = df_fall.groupby('fecha_muerte').count()[['id']].rename(columns={'id': 'nuevos_fallecidos'})
 
     # Mergea (y ordena) los DataFrames
     df_covid = df1.merge(df2, how='outer', left_index=True, right_index=True).merge(df3, how='outer', left_index=True, right_index=True)
@@ -294,7 +300,17 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
     df_dates = pd.DataFrame(index=pd.date_range(start=first_date, end=current_date))
 
     # Rellena el DataFrame para que en los días que no hubo casos reportados asignar el valor de 0
-    df_covid = df_dates.merge(df_covid, how='left', left_index=True, right_index=True, sort=True).fillna(0).cumsum()
+    df_covid_raw = df_dates.merge(df_covid, how='left', left_index=True, right_index=True, sort=True).fillna(0)
+
+    # Crea DataFrame con los infectados acumulados hasta la fecha
+    df_covid = df_covid_raw.cumsum().rename(columns={'nuevos_infectados': 'infectados', 'nuevos_recuperados': 'recuperados', 'nuevos_fallecidos': 'fallecidos'})
+
+    # Crea DataFrame para visualizar en el app. Incluye sólo los últimos 10 días
+    data_table = df_covid_raw.merge(df_covid, how='inner', left_index=True, right_index=True).reset_index().rename(columns={'index': 'fecha'}).tail(10).iloc[::-1]
+    
+    # Crea columnas e información de la tabla a visualizar
+    columns = [{'name': i, 'id': i} for i in data_table.columns]
+    data = data_table.to_dict('records')
 
     # Filtra el DataFrame con las fechas indicadas
     df_covid = df_covid[(start_date <= df_covid.index) & (df_covid.index <= end_date)]
@@ -427,7 +443,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
 
     table_fig['data'][0]['cells']['values'] = table_values
 
-    return rt_graph, log_infectados, table_fig
+    return rt_graph, log_infectados, table_fig, columns, data
 
 if __name__ == '__main__':
     app.run_server(debug=True, host='0.0.0.0')
