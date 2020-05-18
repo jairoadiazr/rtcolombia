@@ -113,6 +113,7 @@ app.layout = html.Div(
                     id='departamento',
                     options=[{'label': dpto, 'value': dpto} for dpto in np.sort(covid_data['departamento'].unique())],
                     placeholder='Seleccione un departamento o distrito especial',
+                    multi=True,
                 ),
                 html.Label('Municipio'),
                 dcc.Dropdown(
@@ -243,14 +244,14 @@ className='container'
     ]
 )
 def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, municipio: str=None, rt_graph=None, log_infectados=None, table_fig=None) -> list:
-    if dpto is None and municipio is None:
+    if not dpto and not municipio:
         df = covid_data
-    elif municipio is None:
-        df = covid_data[covid_data['departamento'] == dpto]
-    elif dpto is None:
+    elif not municipio:
+        df = covid_data[covid_data['departamento'].isin(dpto)]
+    elif not dpto:
         df = covid_data[covid_data['municipio'] == municipio]
     else:
-        df = covid_data[(covid_data['departamento'] == dpto) & covid_data['municipio'] == municipio]
+        df = covid_data[(covid_data['departamento'].isin(dpto)) & covid_data['municipio'] == municipio]
 
     df_imp = df[df['tipo_contagio'] == 'Importado']
     df_no_imp = df[df['tipo_contagio'] != 'Importado']
@@ -265,130 +266,61 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
     df_hosp = df_infect[df_infect['atencion'] == 'Hospital']
     df_uci = df_infect[df_infect['atencion'] == 'Hospital Uci']
     df_casa = df_infect[df_infect['atencion'] == 'Casa']
-    
-    # Si para el DataFrame actual no se tiene información suficiente, se usa la información total del país
-    if df['dias'].count() >= 20:
-        df_days = df
-    else:
-        df_days = covid_data
-    
-    # Calcula media y mediana de tiempo de recuperación 
-    d_mean = np.nanmean(df_days['dias'])
-    d_hat = np.nanmedian(df_days['dias'])
-    d_hat_max = np.nanquantile(df_days['dias'], 0.975)
-    d_hat_min = np.nanquantile(df_days['dias'], 0.025)
-
-    print('Media de días = ', d_mean)
-    print('Mediana de días = ', d_hat)
-
     # Número de infectados por fecha
-    df1 = df_no_imp.groupby('fecha_sintomas').count()[['id']].rename(columns={'id': 'nuevos_infectados'})
+    df1 = df.groupby('fecha_sintomas').count()[['id']].rename(columns={'id': 'nuevos_infectados'})
     
     # Número de recuperados por fecha
-    df2 = df_recu.groupby('fecha_recuperacion').count()[['id']].rename(columns={'id': 'nuevos_recuperados'})
+    df2 = df.groupby('fecha_recuperacion').count()[['id']].rename(columns={'id': 'nuevos_recuperados'})
 
     # Número de fallecidos por fecha
-    df3 = df_fall.groupby('fecha_muerte').count()[['id']].rename(columns={'id': 'nuevos_fallecidos'})
+    df3 = df.groupby('fecha_muerte').count()[['id']].rename(columns={'id': 'nuevos_fallecidos'})
 
     # Mergea (y ordena) los DataFrames
-    df_covid = df1.merge(df2, how='outer', left_index=True, right_index=True).merge(df3, how='outer', left_index=True, right_index=True)
-
-    # Fecha primer caso
-    first_date = df_covid.index.min()
+    df_merged = df1.merge(df2, how='outer', left_index=True, right_index=True).merge(df3, how='outer', left_index=True, right_index=True)
 
     # Crea DataFrame de fechas continuas desde el principio de la epidemia
-    df_dates = pd.DataFrame(index=pd.date_range(start=first_date, end=current_date))
+    df_dates = pd.DataFrame(index=pd.date_range(start=df_merged.index.min(), end=current_date))
 
     # Rellena el DataFrame para que en los días que no hubo casos reportados asignar el valor de 0
-    df_covid_raw = df_dates.merge(df_covid, how='left', left_index=True, right_index=True, sort=True).fillna(0)
+    df_covid_raw = df_dates.merge(df_merged, how='left', left_index=True, right_index=True, sort=True).fillna(0)
 
     # Crea DataFrame con los infectados acumulados hasta la fecha
     df_covid = df_covid_raw.cumsum().rename(columns={'nuevos_infectados': 'infectados', 'nuevos_recuperados': 'recuperados', 'nuevos_fallecidos': 'fallecidos'})
-
-    # Crea DataFrame para visualizar en el app. Incluye sólo los últimos 10 días
-    data_table = df_covid_raw.merge(df_covid, how='inner', left_index=True, right_index=True).reset_index().rename(columns={'index': 'fecha'}).tail(10).iloc[::-1]
-    
-    # Crea columnas e información de la tabla a visualizar
-    columns = [{'name': i, 'id': i} for i in data_table.columns]
-    data = data_table.to_dict('records')
-
     # Filtra el DataFrame con las fechas indicadas
     df_covid = df_covid[(start_date <= df_covid.index) & (df_covid.index <= end_date)]
 
     # Crea vector de tiempo para graficar
     time_vector = list(df_covid.index)
 
-    # Imprime DataFrame con los infectados, recuperados y fallecidos por día
-    print(df_covid.head())
-    print(df_covid.tail())
+    # Crea vector de los días medio de infecciosidad para cada fecha en time_vector[1:] 
+    d_vector = calculate_days(time_vector[1:], df)
     
     # Crea array con el número de infectados acumulado por día
     cum_infectados = df_covid['infectados']
     cum_recu = df_covid['recuperados']
     cumulcases = cum_infectados - cum_recu
-    print('Infectados acumulados', cum_infectados, sep='\n', end='\n\n')
-    print('Recuperados acumulados', cum_recu, sep='\n', end='\n\n')
-    print('Actuales acumulados', cumulcases, sep='\n', end='\n\n')
 
     # Log infectados
     log_infect = np.log(cumulcases.astype('float64'))
 
     # Estima rt tomando usando los días de contagio promedio
-    rt_raw = d_hat * np.diff(np.log(cumulcases.astype('float64')))+1
+    rt_raw = d_vector * np.diff(log_infect) + 1
     if len(rt_raw) > 9:
-        rt_filt = sgnl.filtfilt([0.3333, 0.3333, 0.3333], [1.0], rt_raw)
+        rt_filt = sgnl.filtfilt([1/3, 1/3, 1/3], [1.0], rt_raw)
     else:
         rt_filt = rt_raw
-
-    # rt_max
-    rt_raw_max = d_hat_max * np.diff(np.log(cumulcases.astype('float64'))) + 1
-    if len(rt_raw) > 9:
-        rt_filt_max = sgnl.filtfilt([0.3333, 0.3333, 0.3333], [1.0], rt_raw_max)
-    else:
-        rt_filt_max = rt_raw_max
-    
-    # rt_min
-    rt_raw_min = d_hat_min * np.diff(np.log(cumulcases.astype('float64'))) + 1
-    if len(rt_raw) > 9:
-        rt_filt_min = sgnl.filtfilt([0.3333, 0.3333, 0.3333], [1.0], rt_raw_min)
-    else:
-        rt_filt_min = rt_raw_min
 
     # rt_1
     rt_1 = np.zeros(len(time_vector)) + 1
 
-    # Actualiza gráfica de infectados
-    data_infectados = [
-        {
-            'x': time_vector,
-            'y': log_infect,
-            'mode': 'lines',
-            'name': 'log(infectados)',
-        }
-    ]
-    log_infectados['data'] = data_infectados
-
     # Actualiza gráfica de rt
     data_rt = [
         {
-            'x': time_vector,
+            'x': time_vector[1:], # El Rt es diferencial, por lo que para el día 0 no es calculable
             'y': rt_filt,
             'mode': 'lines',
             'name': 'Rt suavizado',
         },
-        # {
-        #     'x': time_vector,
-        #     'y': rt_raw,
-        #     'hoverinfo': 'text',
-        #     'type': 'scatter',
-        #     'mode': 'lines',
-        #     'name': 'Rt diario',
-        #     'line': {
-        #         'color': 'lightgreen',
-        #         'width': 1
-        #     },
-        #     'text': [f'{date}<br>{val:.2f} ' for date, val in zip(time_vector, rt_raw)]
-        # },
         {
             'x': time_vector,
             'y': rt_1,
@@ -430,20 +362,72 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         annotations.append(new_dict)
 
     rt_graph['data'] = data_rt
-    rt_graph['layout']['title']['text'] = f'Tiempo medio de recuperación: {round(d_hat, 2)} días'
+    rt_graph['layout']['title']['text'] = f'Tiempo medio de recuperación: {round(d_vector[-1], 2)} días'
     rt_graph['layout']['annotations'] = annotations
-    
+
+    return (
+        rt_graph, 
+        update_log(df_covid, time_vector, log_infectados), 
+        update_table(df, table_fig), 
+        *update_matrix(df_covid, df_covid_raw)
+    )
+
+
+def update_log(df_covid, time_vector, log_infectados):
+    cumulcases = df_covid['infectados'] - df_covid['recuperados']
+    log_infect = np.log(cumulcases.astype('float64'))
+    data_infectados = [
+        {
+            'x': time_vector,
+            'y': log_infect,
+            'mode': 'lines',
+            'name': 'log(infectados)',
+        }
+    ]
+    log_infectados['data'] = data_infectados
+    return log_infectados
+
+def update_matrix(df_covid, df_covid_raw):
+    data_table = df_covid_raw.merge(df_covid, how='inner', left_index=True, right_index=True).reset_index().rename(columns={'index': 'fecha'}).tail(10).iloc[::-1]
+    columns = [{'name': i, 'id': i} for i in data_table.columns]
+    data = data_table.to_dict('records')
+    return columns, data
+
+def update_table(df, table_fig):
     # Actualiza tabla
+
+    # TODO: dummy values
+    positivos = 0
+    importados = 0
+    recuperados = 0 
+    fallecidos = 0 
+    activos = 0
+    casa = 0 
+    hosp = 0 
+    uci = 0 
     table_values = [
         ['Positivos', 'Importados', 'Recuperados','Fallecidos'], 
-        list(map(thousand_sep, [df.shape[0], df_imp.shape[0], df_recu.shape[0], df_fall.shape[0]])),
+        list(map(thousand_sep, [positivos, importados, recuperados, fallecidos])),
         ['Activos', 'En casa', 'Hospitalizados', 'En UCI'],
-        list(map(thousand_sep, [df_infect.shape[0], df_casa.shape[0], df_hosp.shape[0], df_uci.shape[0]]))
+        list(map(thousand_sep, [activos, casa, hosp, uci]))
     ]
 
     table_fig['data'][0]['cells']['values'] = table_values
-
-    return rt_graph, log_infectados, table_fig, columns, data
+    return table_fig
+def calculate_days(time_vector, df):
+    # time_vector = pd.date_range(start=start_date, end=end_date)
+    d_vector = list()
+    for day in time_vector:
+        new_df = df[df['fecha_sintomas'] <= day]
+        n = new_df['dias'].count()
+        d_raw = np.nanmedian(new_df['dias'])
+        d_hat = np.nanmedian(covid_data['dias'])
+        if n >= 20:
+            d = d_raw
+        else:
+            d = d_raw * n / 20 + d_hat * (20-n)/20
+        d_vector.append(d)
+    return d_vector
 
 if __name__ == '__main__':
     app.run_server(debug=True, host='0.0.0.0')
