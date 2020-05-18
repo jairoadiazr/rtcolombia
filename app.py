@@ -160,6 +160,7 @@ app.layout = html.Div(
                         }
                     )
                 ),
+                html.Label('La información de este estimado no es confiable la última semana'),
                 dcc.Graph(
                     id='table-fig',
                     figure=go.Figure(
@@ -244,10 +245,11 @@ className='container'
     ]
 )
 def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, municipio: str=None, rt_graph=None, log_infectados=None, table_fig=None) -> list:
-    df, df_covid, df_covid_raw, covid_dict = calculate_variables(start_date, end_date, dpto)
+    start_date, end_date = pd.to_datetime(start_date), pd.to_datetime(end_date)
+    df, df_covid, df_covid_raw, covid_dict = calculate_variables(dpto, start_date)
 
     # Crea vector de tiempo para graficar
-    time_vector = list(df_covid.index)
+    time_vector = list(df_covid[(start_date <= df_covid.index) & (df_covid.index <= end_date)].index)
 
     data_rt = [
         {
@@ -263,15 +265,13 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         }
     ]
 
-    for departamento, dfs in covid_dict.items():
-        df = dfs[0]
-        df_covid = dfs[1]
-
-        # Crea vector de los días medio de infecciosidad para cada fecha en time_vector[1:] 
-        d_vector = calculate_days(time_vector[1:], df)
+    for departamento, (df_dpto, df_covid_dpto) in covid_dict.items():
+        time_vector_dpto = list(df_covid_dpto.index)
+        # Crea vector de los días medio de infecciosidad para cada fecha en time_vector_dpto 
+        d_vector = calculate_days(time_vector_dpto[1:], df_dpto)
         
         # Crea array con el número de infectados acumulado por día
-        cumulcases = df_covid['infectados'] - df_covid['recuperados']
+        cumulcases = df_covid_dpto['infectados'] - df_covid_dpto['recuperados']
 
         # Estima rt tomando usando los días de contagio promedio
         rt_raw = d_vector * np.diff(np.log(cumulcases.astype('float64'))) + 1
@@ -280,7 +280,17 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         else:
             rt_filt = rt_raw
 
-        data_rt.append({'x': time_vector[1:], 'y': rt_filt, 'mode': 'lines', 'name': f'Rt suavizado {departamento}',})
+        try:
+            start = time_vector_dpto.index(start_date)
+            end = time_vector_dpto.index(end_date)
+            time_vector_dpto = time_vector_dpto[start + 1: end + 2]
+            rt_filt = rt_filt[start: end + 1]
+        except ValueError as e:
+            print(e)
+            print('WTF!!!')
+            pass
+        
+        data_rt.append({'x': time_vector_dpto, 'y': rt_filt, 'mode': 'lines', 'name': f'Rt suavizado {departamento}',})
 
     annotation_dict = {
         'yanchor': 'bottom',
@@ -315,13 +325,15 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
 
     return (
         rt_graph, 
-        update_log(df_covid, time_vector, log_infectados), 
+        update_log(df_covid, log_infectados, start_date, end_date), 
         update_table(df, table_fig), 
         *update_matrix(df_covid, df_covid_raw)
     )
 
 
-def update_log(df_covid, time_vector, log_infectados):
+def update_log(df_covid, log_infectados, start_date, end_date):
+    df_covid = df_covid[(start_date <= df_covid.index) & (df_covid.index <= end_date)]
+    time_vector = list(df_covid.index)
     cumulcases = df_covid['infectados'] - df_covid['recuperados']
     log_infect = np.log(cumulcases.astype('float64'))
     data_infectados = [
@@ -367,7 +379,6 @@ def update_table(df, table_fig):
 
 
 def calculate_days(time_vector, df):
-    # time_vector = pd.date_range(start=start_date, end=end_date)
     d_vector = list()
     for day in time_vector:
         new_df = df[df['fecha_sintomas'] <= day]
@@ -382,51 +393,39 @@ def calculate_days(time_vector, df):
     return d_vector
 
 
-def calculate_variables(start_date, end_date, dpto):
-    covid_dict = dict()
-    dfs = list()
-    raws = list()
-    cleans = list()
+def get_dfs(df, start_date):
+    # Número de infectados por fecha
+    df1 = df.groupby('fecha_sintomas').count()[['id']].rename(columns={'id': 'nuevos_infectados'})
+    # Número de recuperados por fecha
+    df2 = df.groupby('fecha_recuperacion').count()[['id']].rename(columns={'id': 'nuevos_recuperados'})
+    # Número de fallecidos por fecha
+    df3 = df.groupby('fecha_muerte').count()[['id']].rename(columns={'id': 'nuevos_fallecidos'})
+    # Mergea (y ordena) los DataFrames
+    df_merged = df1.merge(df2, how='outer', left_index=True, right_index=True).merge(df3, how='outer', left_index=True, right_index=True)
+    # Crea DataFrame de fechas continuas desde el principio de la epidemia
+    df_dates = pd.DataFrame(index=pd.date_range(start=min(df_merged.index.min(), start_date), end=current_date))
+    # Rellena el DataFrame para que en los días que no hubo casos reportados asignar el valor de 0
+    df_covid_raw = df_dates.merge(df_merged, how='left', left_index=True, right_index=True, sort=True).fillna(0)
+    # Crea DataFrame con los infectados acumulados hasta la fecha
+    df_covid = df_covid_raw.cumsum().rename(columns={'nuevos_infectados': 'infectados', 'nuevos_recuperados': 'recuperados', 'nuevos_fallecidos': 'fallecidos'})
+    
+    return df_covid_raw, df_covid
+
+
+
+def calculate_variables(dpto, start_date):
     if not dpto:
         df = covid_data
-        # Número de infectados por fecha
-        df1 = df.groupby('fecha_sintomas').count()[['id']].rename(columns={'id': 'nuevos_infectados'})
-        # Número de recuperados por fecha
-        df2 = df.groupby('fecha_recuperacion').count()[['id']].rename(columns={'id': 'nuevos_recuperados'})
-        # Número de fallecidos por fecha
-        df3 = df.groupby('fecha_muerte').count()[['id']].rename(columns={'id': 'nuevos_fallecidos'})
-        # Mergea (y ordena) los DataFrames
-        df_merged = df1.merge(df2, how='outer', left_index=True, right_index=True).merge(df3, how='outer', left_index=True, right_index=True)
-        # Crea DataFrame de fechas continuas desde el principio de la epidemia
-        df_dates = pd.DataFrame(index=pd.date_range(start=df_merged.index.min(), end=current_date))
-        # Rellena el DataFrame para que en los días que no hubo casos reportados asignar el valor de 0
-        df_covid_raw = df_dates.merge(df_merged, how='left', left_index=True, right_index=True, sort=True).fillna(0)
-        # Crea DataFrame con los infectados acumulados hasta la fecha
-        df_covid = df_covid_raw.cumsum().rename(columns={'nuevos_infectados': 'infectados', 'nuevos_recuperados': 'recuperados', 'nuevos_fallecidos': 'fallecidos'})
-        
-        df_covid = df_covid[(start_date <= df_covid.index) & (df_covid.index <= end_date)]
-
+        df_covid_raw, df_covid = get_dfs(df, start_date)
         covid_dict = {'Colombia': [df, df_covid]}
-        
     else:
+        covid_dict = dict()
+        dfs = list()
+        raws = list()
+        cleans = list()
         for d in dpto:
             df = covid_data[covid_data['departamento'] == d]
-            # Número de infectados por fecha
-            df1 = df.groupby('fecha_sintomas').count()[['id']].rename(columns={'id': 'nuevos_infectados'})
-            # Número de recuperados por fecha
-            df2 = df.groupby('fecha_recuperacion').count()[['id']].rename(columns={'id': 'nuevos_recuperados'})
-            # Número de fallecidos por fecha
-            df3 = df.groupby('fecha_muerte').count()[['id']].rename(columns={'id': 'nuevos_fallecidos'})
-            # Mergea (y ordena) los DataFrames
-            df_merged = df1.merge(df2, how='outer', left_index=True, right_index=True).merge(df3, how='outer', left_index=True, right_index=True)
-            # Crea DataFrame de fechas continuas desde el principio de la epidemia
-            df_dates = pd.DataFrame(index=pd.date_range(start=df_merged.index.min(), end=current_date))
-            # Rellena el DataFrame para que en los días que no hubo casos reportados asignar el valor de 0
-            df_covid_raw = df_dates.merge(df_merged, how='left', left_index=True, right_index=True, sort=True).fillna(0)
-            # Crea DataFrame con los infectados acumulados hasta la fecha
-            df_covid = df_covid_raw.cumsum().rename(columns={'nuevos_infectados': 'infectados', 'nuevos_recuperados': 'recuperados', 'nuevos_fallecidos': 'fallecidos'})
-            
-            df_covid = df_covid[(start_date <= df_covid.index) & (df_covid.index <= end_date)]
+            df_covid_raw, df_covid = get_dfs(df, start_date)
             dfs.append(df)
             raws.append(df_covid_raw)
             cleans.append(df_covid)
