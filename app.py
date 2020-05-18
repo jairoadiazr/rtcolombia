@@ -66,8 +66,14 @@ for fecha in fechas:
         print('Hay una fecha en formato incorrecto: ', e)
         covid_data[fecha] = pd.to_datetime(covid_data[fecha], errors='coerce')
 
+# Valor medio de retraso en el reporte
+w_hat = np.nanmedian(covid_data['fecha_reporte'] - covid_data['fecha_sintomas'])
+
 # Para los fallecidos, se asigna su fecha de recuperación como su fecha de muerte
 covid_data.loc[covid_data['estado_salud'] == 'Fallecido', 'fecha_recuperacion'] = covid_data[covid_data['estado_salud'] == 'Fallecido']['fecha_muerte']
+
+# Para los pacientes sin fecha de síntomas se le asigna un valor basándose en la estimación del Instituto Robert Koch de Alemania
+covid_data.loc[covid_data['fecha_sintomas'].isna(), 'fecha_sintomas'] = covid_data[covid_data.fecha_sintomas.isna()]['fecha_reporte'] - w_hat
 
 # Calcula el número de días desde la fecha de inicio de síntomas hasta la fecha de recuperación
 covid_data['dias'] = (covid_data['fecha_recuperacion'] - covid_data['fecha_sintomas']).apply(lambda x: x.days)
