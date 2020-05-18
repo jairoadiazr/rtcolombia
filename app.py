@@ -363,16 +363,14 @@ def update_matrix(df_covid, df_covid_raw):
 
 def update_table(df, table_fig):
     # Actualiza tabla
-
-    # TODO: dummy values
-    positivos = 0
-    importados = 0
-    recuperados = 0 
-    fallecidos = 0 
-    activos = 0
-    casa = 0 
-    hosp = 0 
-    uci = 0 
+    positivos = df.shape[0]
+    importados = df[df['tipo_contagio'] == 'Importado'].shape[0]
+    recuperados = df[df['atencion'] == 'Recuperado'].shape[0]
+    fallecidos = df[df['atencion'] == 'Fallecido'].shape[0]
+    casa = df[df['atencion'] == 'Casa'].shape[0]
+    hosp = df[df['atencion'] == 'Hospital'].shape[0]
+    uci = df[df['atencion'] == 'Hospital Uci'].shape[0]
+    activos = casa + hosp + uci
     table_values = [
         ['Positivos', 'Importados', 'Recuperados','Fallecidos'], 
         list(map(thousand_sep, [positivos, importados, recuperados, fallecidos])),
