@@ -99,7 +99,7 @@ app.layout = html.Div(
                 html.Label('Departamento o distrito especial'),
                 dcc.Dropdown(
                     id='departamento',
-                    options=[{'label': dpto, 'value': dpto} for dpto in np.sort(covid_data['departamento'].unique())],
+                    options=[{'label': dpto, 'value': dpto} for dpto in np.concatenate((np.array(['Todos']),np.sort(covid_data['departamento'].unique())))],
                     placeholder='Seleccione un departamento o distrito especial',
                 ),
                 html.Label('Municipio'),
@@ -184,6 +184,7 @@ className='container'
 )
 def update_combo_municipio(dpto: str):
     municipio_list=np.sort(covid_data[covid_data['departamento']==dpto]['municipio'].unique())
+    municipio_list=np.concatenate((np.array(['Todos']),municipio_list))
     municipio_list=[{'label': city, 'value': city} for city in municipio_list],
     return municipio_list
 
@@ -202,14 +203,22 @@ def update_combo_municipio(dpto: str):
 )
 
 def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, municipio: str=None) -> list:
-    if dpto is None and municipio is None:
+    if (dpto is None and municipio is None) or dpto=='Todos':
         df = covid_data
-    elif municipio is None:
+        print(1)
+    elif (municipio is None) or (municipio=='Todos'):
         df = covid_data[covid_data['departamento'] == dpto]
+        print(2)
     elif dpto is None:
         df = covid_data[covid_data['municipio'] == municipio]
+        print(3)
     else:
-        df = covid_data[(covid_data['departamento'] == dpto) & (covid_data['municipio'] == municipio)]
+        if np.sum((covid_data['departamento'] == dpto) & (covid_data['municipio'] == municipio))==0:
+            df = covid_data[covid_data['departamento'] == dpto]
+            print(4.1)
+        else:
+            df = covid_data[(covid_data['departamento'] == dpto) & (covid_data['municipio'] == municipio)]
+            print(4.2)
 
     print(municipio)
     print(df)
@@ -374,7 +383,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
             'hoverinfo': 'text',
             'type': 'scatter',
             'mode': 'lines',
-            'name': 'Rt suavizado',
+            'name': 'Rt ajustado',
             'line': {
                 'color': 'darkgreen',
                 'width': 1
@@ -387,12 +396,12 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
             'hoverinfo': 'text',
             'type': 'scatter',
             'mode': 'lines',
-            'name': 'Rt diario',
+            'name': 'Rt sin ajuste',
             'line': {
                 'color': 'lightgreen',
                 'width': 1
             },
-            'text': [f'{date}<br>{val:.2f} ' for date, val in zip(time_vector, rt_raw)]
+            'text': [f'{date}<br>{val:.2f} ' for date, val in zip(time_vector, rt_filt_sinajuste)]
         },
         {
             'x': time_vector,
@@ -424,6 +433,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         datetime(2020, 3, 25),
         datetime(2020, 4, 11),
         datetime(2020, 4, 27),
+        datetime(2020, 5, 11),
     ]
 
     annotation=list()
@@ -526,4 +536,4 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
     return rt_graph, log_infectados, table
 
 if __name__ == '__main__':
-    app.run_server(debug=True, host='0.0.0.0')
+    app.run_server(debug=True)
