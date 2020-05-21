@@ -255,7 +255,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
 def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, estimados=False):
     if estimados:
         filt = 'estimados'
-        msg = 'ajustado'
+        msg = 'ajustado (nowcast)'
     else:
         filt = 'infectados'
         msg = 'sin ajuste'
