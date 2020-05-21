@@ -368,9 +368,15 @@ def get_dfs(df, start_date):
     # Agrega estimados
     p = delay_probability(df)
     probabilities = [1 / p[day] if day in p else 1 for day in (datetime.now() - df_dates.index).days]
-    df_covid_raw['estimados'] = df_covid_raw['nuevos_infectados'] * probabilities
+    df_covid_raw['nuevos_estimados'] = df_covid_raw['nuevos_infectados'] * probabilities
     # Crea DataFrame con los infectados acumulados hasta la fecha
-    df_covid = df_covid_raw.cumsum().rename(columns={'nuevos_infectados': 'infectados', 'nuevos_recuperados': 'recuperados', 'nuevos_fallecidos': 'fallecidos'})
+    rename_dict = {
+        'nuevos_infectados': 'infectados', 
+        'nuevos_recuperados': 'recuperados', 
+        'nuevos_fallecidos': 'fallecidos',
+        'nuevos_estimados': 'estimados'
+        }
+    df_covid = df_covid_raw.cumsum().rename(columns=rename_dict)
     
     return df_covid_raw, df_covid
 
