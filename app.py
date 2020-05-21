@@ -75,6 +75,7 @@ app.layout = html.Div(
                     id='municipio',
                     options=[{'label': city, 'value': city} for city in np.sort(covid_data['municipio'].unique())],
                     placeholder='Seleccione un municipio',
+                    multi=True,
                 ),
                 html.Label('Filtro de fecha'),
                 dcc.DatePickerRange(
@@ -200,8 +201,13 @@ className='container'
     ]
 )
 def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, municipio: str=None, rt_graph=None, log_infectados=None, table_fig=None) -> list:
+    if dpto is None:
+        dpto = list()
+    if municipio is None:
+        municipio = list()
     start_date, end_date = pd.to_datetime(start_date), pd.to_datetime(end_date)
-    df, df_covid, df_covid_raw, covid_dict = calculate_variables(dpto, start_date)
+    locations = [*dpto, *municipio]
+    df, df_covid, df_covid_raw, covid_dict = calculate_variables(locations, start_date)
 
     # Crea vector de tiempo para graficar
     time_vector = list(df_covid[(start_date <= df_covid.index) & (df_covid.index <= end_date)].index)
@@ -381,8 +387,8 @@ def get_dfs(df, start_date):
     return df_covid_raw, df_covid
 
 
-def calculate_variables(dpto, start_date):
-    if not dpto:
+def calculate_variables(locations, start_date):
+    if not locations:
         df = covid_data
         df_covid_raw, df_covid = get_dfs(df, start_date)
         covid_dict = {'Colombia': [df, df_covid]}
@@ -391,13 +397,13 @@ def calculate_variables(dpto, start_date):
         dfs = list()
         raws = list()
         cleans = list()
-        for d in dpto:
-            df = covid_data[covid_data['departamento'] == d]
+        for location in locations:
+            df = covid_data[(covid_data['departamento'] == location) | (covid_data['municipio'] == location)]
             df_covid_raw, df_covid = get_dfs(df, start_date)
             dfs.append(df)
             raws.append(df_covid_raw)
             cleans.append(df_covid)
-            covid_dict[d] = (df, df_covid)
+            covid_dict[location] = (df, df_covid)
         
         df_covid_raw = pd.concat(raws).groupby(level=0, sort=True).sum()
         df_covid = pd.concat(cleans).groupby(level=0, sort=True).sum()
