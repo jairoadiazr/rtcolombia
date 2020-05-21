@@ -346,6 +346,11 @@ def calculate_days(time_vector, df):
         d_vector.append(d)
     return d_vector
 
+def delay_probability(df):
+    total = df.shape[0]
+    df_filter = df.groupby('dias_retraso', sort=True).count()['id']
+    probabilities = {ix: sum(df_filter.loc[df_filter.index <= ix])/total for ix in df_filter.index}
+    return probabilities
 
 def get_dfs(df, start_date):
     # Número de infectados por fecha
@@ -360,11 +365,14 @@ def get_dfs(df, start_date):
     df_dates = pd.DataFrame(index=pd.date_range(start=min(df_merged.index.min(), start_date), end=current_date))
     # Rellena el DataFrame para que en los días que no hubo casos reportados asignar el valor de 0
     df_covid_raw = df_dates.merge(df_merged, how='left', left_index=True, right_index=True, sort=True).fillna(0)
+    # Agrega estimados
+    p = delay_probability(df)
+    probabilities = [1 / p[day] if day in p else 1 for day in (datetime.now() - df_dates.index).days]
+    df_covid_raw['estimados'] = df_covid_raw['nuevos_infectados'] * probabilities
     # Crea DataFrame con los infectados acumulados hasta la fecha
     df_covid = df_covid_raw.cumsum().rename(columns={'nuevos_infectados': 'infectados', 'nuevos_recuperados': 'recuperados', 'nuevos_fallecidos': 'fallecidos'})
     
     return df_covid_raw, df_covid
-
 
 
 def calculate_variables(dpto, start_date):
