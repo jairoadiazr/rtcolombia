@@ -115,9 +115,19 @@ app.layout = html.Div(
                     max_date_allowed=current_date,
                     initial_visible_month=current_date,
                     end_date=current_date,
-                    start_date=current_date - timedelta(days=30)
+                    start_date=current_date - timedelta(days=60)
                 )
             ]
+        ),
+        html.H6(
+            id='dmedio_txt',
+            children='',
+            style={'text-align': 'center'}
+        ),
+        html.H6(
+            id='Wtmedio_txt',
+            children='',
+            style={'text-align': 'center'}
         ),
         html.Div(
             [
@@ -145,6 +155,7 @@ app.layout = html.Div(
                     }
                 ),
                 dcc.Graph(
+                    style={"margin-top": "-40px"},
                     id='log_infectados',
                     config={
                         'modeBarButtonsToRemove': [
@@ -157,7 +168,15 @@ app.layout = html.Div(
                             'resetScale2d'
                         ]
                     }
-                )
+                ),
+                dcc.Checklist(
+                    id='log_checkbox',
+                    style={"margin-top": "0px","margin-bottom": "60px",'text-align': 'center'},
+                    options=[
+                        {'label': 'logarítmica', 'value': 'log'},
+                    ],
+                    value=['log']
+                )  
             ],
         ),
             dcc.Markdown('Elaborado por:'),
@@ -193,16 +212,19 @@ def update_combo_municipio(dpto: str):
         Output('rt-graph', 'figure'),
         Output('log_infectados', 'figure'),
         Output('table-fig', 'figure'),
+        Output('dmedio_txt','children'),
+        Output('Wtmedio_txt','children'),
     ],
     [
         Input('fecha', 'start_date'),
         Input('fecha', 'end_date'),
         Input('departamento', 'value'),
         Input('municipio', 'value'),
+        Input('log_checkbox', 'value'),
     ]
 )
 
-def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, municipio: str=None) -> list:
+def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, municipio: str=None, log_checkbox: str='log') -> list:
     if (dpto is None and municipio is None) or dpto=='Todos':
         df = covid_data
         print(1)
@@ -223,17 +245,20 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
     print(municipio)
     print(df)
     #Calcular tiempos de retraso en la notificación
-    Wt=covid_data['fecha_reporte']-covid_data['fecha_sintomas']
+    Wt=df['fecha_reporte']-df['fecha_sintomas']
     Wt=[i.days for i in Wt]
     Wt = np.array(Wt)[~np.isnan(Wt)]
     Wt=Wt.astype('int')
     Wtmedio=np.median(Wt)
-
+    print('oooo')
+    print(Wtmedio)
     Pretraso=np.zeros(np.max(Wt)+1)
     for d in range(np.max(Wt)+1):
         Pretraso[d]=np.sum(Wt<=d)/len(Wt)
 
     Pretraso[Pretraso==0]=np.min(Pretraso[Pretraso!=0])
+
+    df['fecha_sintomas'][df['fecha_sintomas'].isnull()]=df['fecha_notificacion'][df['fecha_sintomas'].isnull()]-timedelta(days=int(Wtmedio))
 
     df_imp = df[df['tipo_contagio'] == 'Importado']
     df_imp['fecha_sintomas'][df_imp['fecha_sintomas'].isnull()]=df_imp['fecha_notificacion'][df_imp['fecha_sintomas'].isnull()]-timedelta(days=int(Wtmedio))
@@ -248,6 +273,9 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
     df_no_imp_recu = df_no_imp[df_no_imp['atencion'] == 'Recuperado']
     
     df_infect = df[df['atencion'].isin(['Hospital', 'Hospital Uci', 'Casa'])]
+    df_infect = df[~df['atencion'].isin(['Recuperado', 'Fallecido'])]
+    print(df['atencion'].unique())
+    print(123456)
     df_hosp = df_infect[df_infect['atencion'] == 'Hospital']
     df_uci = df_infect[df_infect['atencion'] == 'Hospital Uci']
     df_casa = df_infect[df_infect['atencion'] == 'Casa']
@@ -271,6 +299,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
 
     # Número de infectados por fecha
     df1 = df_no_imp.groupby('fecha_sintomas').count()[['id']].rename(columns={'id': 'infectados'})
+    df_todos = df.groupby('fecha_sintomas').count()[['id']].rename(columns={'id': 'infectados'})
     
     # Número de recuperados por fecha
     df2 = df_recu.groupby('fecha_recuperacion').count()[['id']].rename(columns={'id': 'recuperados'})
@@ -280,33 +309,46 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
 
     # Mergea (y ordena) los DataFrames
     df_covid = df1.merge(df2, how='outer', left_index=True, right_index=True).merge(df3, how='outer', left_index=True, right_index=True)
-
+    df_covid_todos = df_todos.merge(df2, how='outer', left_index=True, right_index=True).merge(df3, how='outer', left_index=True, right_index=True)
+    
     # Fecha primer caso
     first_date = df_covid.index.min()
-    print(municipio)
-    print(df_covid)
+    first_date_todos =  df_covid_todos.index.min()
+
     # Crea DataFrame de fechas continuas desde el principio de la epidemia
     df_dates = pd.DataFrame(index=pd.date_range(start=first_date, end=current_date))
+    df_dates_todos = pd.DataFrame(index=pd.date_range(start=first_date_todos, end=current_date))
 
     # Rellena el DataFrame para que en los días que no hubo casos reportados asignar el valor de 0
     df_covid_diario = df_dates.merge(df_covid, how='left', left_index=True, right_index=True, sort=True).fillna(0)
-    
+    df_covid_diario_todos = df_dates_todos.merge(df_covid_todos, how='left', left_index=True, right_index=True, sort=True).fillna(0)
+
     #Calcular diferencias entre la fecha actual y las fechas del dataframe
     T_t=pd.to_datetime(current_date)-df_covid_diario.index
     T_t=np.array(T_t.astype('timedelta64[D]').astype('int'))
+    T_t_todos=pd.to_datetime(current_date)-df_covid_diario_todos.index
+    T_t_todos=np.array(T_t_todos.astype('timedelta64[D]').astype('int'))
 
     #Omitir diferencias mayores que sean mayores que el retraso más largo visto
     T_t[T_t>=len(Pretraso)]=len(Pretraso)-1
+    T_t_todos[T_t_todos>=len(Pretraso)]=len(Pretraso)-1
+
 
     #ajustar número de infectados
     df_covid_diario['infectados_sinajuste']=df_covid_diario['infectados']
     df_covid_diario['infectados']=df_covid_diario['infectados']*1/Pretraso[T_t]
 
+    #ajustar número de infectados
+    df_covid_diario_todos['infectados_sinajuste']=df_covid_diario_todos['infectados']
+    df_covid_diario_todos['infectados']=df_covid_diario_todos['infectados']*1/Pretraso[T_t_todos]
+
     #Calcula acumulados en el dataframe
     df_covid = df_covid_diario.cumsum()
+    df_covid_todos = df_covid_diario_todos.cumsum()
 
     # Filtra el DataFrame con las fechas indicadas
     df_covid = df_covid[(start_date <= df_covid.index) & (df_covid.index <= end_date)]
+    df_covid_todos = df_covid_todos[(start_date <= df_covid_todos.index) & (df_covid_todos.index <= end_date)]
     
     time_vector = list(df_covid.index)
     
@@ -317,15 +359,33 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
     # Crea array con el número de infectados acumulado por día
     cum_infectados_sinajuste = df_covid['infectados_sinajuste']
     cum_infectados = df_covid['infectados']
+    cum_infectados_todos_sinajuste = df_covid_todos['infectados_sinajuste']
+    cum_infectados_todos = df_covid_todos['infectados']
+
     cum_recu = df_covid['recuperados']
-    cumulcases = cum_infectados - cum_recu
-    cumulcases_sinajuste = cum_infectados_sinajuste - cum_recu
+    cum_fall = df_covid['fallecidos']
+    cumulcases = cum_infectados - cum_recu - cum_fall
+    cumulcases_sinajuste = cum_infectados_sinajuste - cum_recu - cum_fall
+
+    cumulcases_todos_sinajuste = cum_infectados_todos_sinajuste - cum_recu - cum_fall
+    cumulcases_todos = cum_infectados_todos - cum_recu - cum_fall
+
+    
     print('Infectados acumulados', cum_infectados, sep='\n', end='\n\n')
     print('Recuperados acumulados', cum_recu, sep='\n', end='\n\n')
     print('Actuales acumulados', cumulcases, sep='\n', end='\n\n')
 
     # Log infectados
-    log_infect = np.log(cumulcases.astype('float64'))
+    print(log_checkbox)
+    if len(log_checkbox)==1:
+        log_infect = np.log(cumulcases_todos.astype('float64'))
+        log_infect_sinajuste = np.log(cumulcases_todos_sinajuste.astype('float64'))
+        logplot='log(infectados)'
+    else:
+        logplot='infectados'
+        log_infect = cumulcases_todos.astype('float64')
+        log_infect_sinajuste = cumulcases_todos_sinajuste.astype('float64')
+
 
     # Estima rt tomando usando los días de contagio promedio
     rt_raw = d_hat * np.diff(np.log(cumulcases.astype('float64')))+1
@@ -363,13 +423,26 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
     data_infectados = [
         {
             'x': time_vector,
+            'y': log_infect_sinajuste,
+            'hoverinfo': 'text',
+            'type': 'scatter',
+            'mode': 'lines',
+            'name': 'sin ajuste por retraso',
+            'line': {
+                'color': colors[0],
+                'width': 1
+            },
+            'text': [f'{date}<br>{val:.2f} ' for date, val in zip(time_vector, log_infect_sinajuste)]
+        },
+        {
+            'x': time_vector,
             'y': log_infect,
             'hoverinfo': 'text',
             'type': 'scatter',
             'mode': 'lines',
-            'name': 'log(infectados)',
+            'name': 'con ajuste por retraso',
             'line': {
-                'color': colors[0],
+                'color': 'navy',
                 'width': 1
             },
             'text': [f'{date}<br>{val:.2f} ' for date, val in zip(time_vector, log_infect)]
@@ -451,6 +524,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
     log_infectados={
         'data': data_infectados,
         'layout': {
+            'paper_bgcolor':'rgba(0,0,0,0)',
             'height':400,
             'legend': {
                 'orientation': 'h',
@@ -461,7 +535,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
             'hovermode': 'closest',
             'yaxis': {
                 'ticksuffix': tick_suffix,
-                'title': 'log(infectados)',
+                'title': logplot,
                 'showgrid': True,
             },
             'xaxis': {
@@ -475,7 +549,6 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
     rt_graph = {
         'data': data_rt,
         'layout': {
-            'title': f'Tiempo medio de recuperación: {round(d_hat, 2)} días',
             'legend': {
                 'orientation': 'h',
                 "x": 0.5,
@@ -533,7 +606,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         ]
     )
 
-    return rt_graph, log_infectados, table
+    return rt_graph, log_infectados, table, 'Tiempo medio de recuperación: '+str(round(d_hat, 2))+' días', 'Tiempo medio de retraso en el reporte: '+str(round(Wtmedio, 2))+' días'
 
 if __name__ == '__main__':
     app.run_server(debug=True)
