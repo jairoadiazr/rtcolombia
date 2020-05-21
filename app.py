@@ -1,15 +1,20 @@
+# Dash
 import dash
 import dash_table
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
+
+# Librerías estándar 
 import pandas as pd
 import numpy as np
 import scipy.signal as sgnl
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from copy import deepcopy
-import plotly.graph_objects as go
+
+# Clase CovidData
+from covid import CovidData
 
 # Fecha reporte
 current_date = datetime.now().date()
@@ -17,105 +22,18 @@ current_date = datetime.now().date()
 # Obtiene información de covid Colombia
 covid_data = pd.read_json('https://www.datos.gov.co/resource/gt2j-8ykr.json?$limit=1000000')
 
-# Crea diccionarios para renombrar columnas
-rename_dict = {
-    'id_de_caso': 'id',
-    'fecha_de_notificaci_n': 'fecha_notificacion',
-    'codigo_divipola': 'id_municipio',
-    'ciudad_de_ubicaci_n': 'municipio',
-    'departamento': 'departamento',
-    'atenci_n': 'atencion',
-    'edad': 'edad',
-    'sexo': 'sexo',
-    'tipo': 'tipo_contagio',
-    'estado': 'estado_salud',
-    'pa_s_de_procedencia': 'pais_procedencia',
-    'fis': 'fecha_sintomas',
-    'fecha_de_muerte': 'fecha_muerte',
-    'fecha_diagnostico': 'fecha_diagnostico',
-    'fecha_recuperado': 'fecha_recuperacion',
-    'fecha_reporte_web': 'fecha_reporte'
-}
+# Instancia la información en la clase CovidData
+cd = CovidData(covid_data)
+cd.preprocessing_data()
 
-# Renombra las columnas
-covid_data = covid_data.rename(columns=rename_dict)
-
-# Unifica valores de las columnas
-columnas_corregir = ['municipio', 'departamento', 'atencion', 'sexo',
-                     'tipo_contagio', 'estado_salud', 'pais_procedencia']
-for col in columnas_corregir:
-    covid_data[col] = covid_data[col].fillna('-')
-    covid_data[col] = covid_data[col].apply(lambda x: x.title())
-
-# ¿Qué hacer con los pacientes recuperados sin fecha de recuperación?
-falta_fecha_recuperacion = covid_data[(covid_data['fecha_recuperacion'] == '-   -') &
-                                      (covid_data['atencion'] == 'Recuperado')].shape[0]
-if falta_fecha_recuperacion:
-    print(f'Faltantes fecha recuperación: {falta_fecha_recuperacion}')
-
-# Fechas
-fechas = ['fecha_notificacion', 'fecha_diagnostico', 'fecha_sintomas', 
-          'fecha_muerte', 'fecha_recuperacion', 'fecha_reporte']
-
-# Reemplaza fechas con valores '-   -' o 'Asintomático' por np.datetime64('NaT')
-for fecha in fechas:
-    covid_data[fecha] = covid_data[fecha].replace(['-   -', 'Asintomático'], np.datetime64('NaT'))
-    try:
-        covid_data[fecha] = pd.to_datetime(covid_data[fecha])
-    except Exception as e:
-        print('Hay una fecha en formato incorrecto: ', e)
-        covid_data[fecha] = pd.to_datetime(covid_data[fecha], errors='coerce')
-
-# Asigna fecha_sintomas a infectados sin fecha
-covid_data['dias_retraso'] = (covid_data['fecha_reporte'] - covid_data['fecha_sintomas']).apply(lambda x: x.days) 
-w_hat = covid_data['dias_retraso'].median(skipna=True)
-deal_asymptomatic(w_hat)
-
-# Para los fallecidos, se asigna su fecha de recuperación como su fecha de muerte
-covid_data.loc[covid_data['estado_salud'] == 'Fallecido', 'fecha_recuperacion'] = covid_data[covid_data['estado_salud'] == 'Fallecido']['fecha_muerte']
-
-# Calcula el número de días desde la fecha de inicio de síntomas hasta la fecha de recuperación y calcula su media
-covid_data['dias'] = (covid_data['fecha_recuperacion'] - covid_data['fecha_sintomas']).apply(lambda x: x.days)
-d_hat = covid_data['dias'].median(skipna=True)
+covid_data = cd.covid_data
+d_hat = cd.d_hat
+w_hat = cd.w_hat
 
 # Funciones auxiliares
 
 def thousand_sep(n: int) -> str:
     return f'{n:,}'
-
-
-def deal_asymptomatic(w_hat: float):
-    '''Asigna valor a fecha_sintomas a los infectados que no la tienen
-
-    Para los infectados sin fecha de síntomas, se les asigna un valor
-    basándose en la estimación del Instituto Robert Koch de Alemania.
-    Para más información ver el documento: 
-    '''
-    departamentos = covid_data['departamento'].unique()
-    fechas = sorted(covid_data['fecha_reporte'].unique())
-    # Condición 0: el infectado es asintomático
-    cond0 = covid_data['fecha_sintomas'].isna()
-    for dpto in departamentos:
-        # Condición 1: el departamento es 'dpto'
-        cond1 = covid_data['departamento'] == dpto
-        for fecha in fechas:
-            # Condición 2: el reporte fue hecho antes de 'fecha'
-            cond2 = covid_data['fecha_reporte'] <= fecha
-            # Condición 3: el reporte fue hecho en 'fecha'
-            cond3 = covid_data['fecha_reporte'] == fecha
-
-            df_filter = covid_data[(cond1) & (cond2)]
-            n, w_raw = df_filter['dias_retraso'].count(), df_filter['dias_retraso'].median(skipna=True)
-            if n >= 20:
-                w = w_raw
-            elif n == 0:
-                w = w_hat
-            else:
-                w = w_raw * n / 20 + w_hat * (20-n) / 20
-            # Para cada registro se hace la asignación basado en su departamento y los casos reportados hasta esa fecha
-            covid_data.loc[(cond0) & (cond1) & (cond3), 'fecha_sintomas'] = \
-                covid_data[(cond0) & (cond1) & (cond3)]['fecha_reporte'] - timedelta(days=w)
-
 
 external_stylesheets = ['https://cdn.rawgit.com/gschivley/8040fc3c7e11d2a4e7f0589ffc829a02/raw/fe763af6be3fc79eca341b04cd641124de6f6f0d/dash.css']
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
