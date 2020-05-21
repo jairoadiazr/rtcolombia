@@ -66,22 +66,55 @@ for fecha in fechas:
         print('Hay una fecha en formato incorrecto: ', e)
         covid_data[fecha] = pd.to_datetime(covid_data[fecha], errors='coerce')
 
-# Valor medio de retraso en el reporte
-w_hat = np.nanmedian(covid_data['fecha_reporte'] - covid_data['fecha_sintomas'])
+# Asigna fecha_sintomas a infectados sin fecha
+covid_data['dias_retraso'] = (covid_data['fecha_reporte'] - covid_data['fecha_sintomas']).apply(lambda x: x.days) 
+w_hat = covid_data['dias_retraso'].median(skipna=True)
+deal_asymptomatic(w_hat)
 
 # Para los fallecidos, se asigna su fecha de recuperación como su fecha de muerte
 covid_data.loc[covid_data['estado_salud'] == 'Fallecido', 'fecha_recuperacion'] = covid_data[covid_data['estado_salud'] == 'Fallecido']['fecha_muerte']
 
-# Para los pacientes sin fecha de síntomas se le asigna un valor basándose en la estimación del Instituto Robert Koch de Alemania
-covid_data.loc[covid_data['fecha_sintomas'].isna(), 'fecha_sintomas'] = covid_data[covid_data.fecha_sintomas.isna()]['fecha_reporte'] - w_hat
-
-# Calcula el número de días desde la fecha de inicio de síntomas hasta la fecha de recuperación
+# Calcula el número de días desde la fecha de inicio de síntomas hasta la fecha de recuperación y calcula su media
 covid_data['dias'] = (covid_data['fecha_recuperacion'] - covid_data['fecha_sintomas']).apply(lambda x: x.days)
+d_hat = covid_data['dias'].median(skipna=True)
 
 # Funciones auxiliares
 
 def thousand_sep(n: int) -> str:
     return f'{n:,}'
+
+
+def deal_asymptomatic(w_hat: float):
+    '''Asigna valor a fecha_sintomas a los infectados que no la tienen
+
+    Para los infectados sin fecha de síntomas, se les asigna un valor
+    basándose en la estimación del Instituto Robert Koch de Alemania.
+    Para más información ver el documento: 
+    '''
+    departamentos = covid_data['departamento'].unique()
+    fechas = sorted(covid_data['fecha_reporte'].unique())
+    # Condición 0: el infectado es asintomático
+    cond0 = covid_data['fecha_sintomas'].isna()
+    for dpto in departamentos:
+        # Condición 1: el departamento es 'dpto'
+        cond1 = covid_data['departamento'] == dpto
+        for fecha in fechas:
+            # Condición 2: el reporte fue hecho antes de 'fecha'
+            cond2 = covid_data['fecha_reporte'] <= fecha
+            # Condición 3: el reporte fue hecho en 'fecha'
+            cond3 = covid_data['fecha_reporte'] == fecha
+
+            df_filter = covid_data[(cond1) & (cond2)]
+            n, w_raw = df_filter['dias_retraso'].count(), df_filter['dias_retraso'].median(skipna=True)
+            if n >= 20:
+                w = w_raw
+            elif n == 0:
+                w = w_hat
+            else:
+                w = w_raw * n / 20 + w_hat * (20-n) / 20
+            # Para cada registro se hace la asignación basado en su departamento y los casos reportados hasta esa fecha
+            covid_data.loc[(cond0) & (cond1) & (cond3), 'fecha_sintomas'] = \
+                covid_data[(cond0) & (cond1) & (cond3)]['fecha_reporte'] - timedelta(days=w)
 
 
 external_stylesheets = ['https://cdn.rawgit.com/gschivley/8040fc3c7e11d2a4e7f0589ffc829a02/raw/fe763af6be3fc79eca341b04cd641124de6f6f0d/dash.css']
@@ -385,10 +418,11 @@ def calculate_days(time_vector, df):
     for day in time_vector:
         new_df = df[df['fecha_sintomas'] <= day]
         n = new_df['dias'].count()
-        d_raw = np.nanmedian(new_df['dias'])
-        d_hat = np.nanmedian(covid_data['dias'])
+        d_raw = new_df['dias'].median(skipna=True)
         if n >= 20:
             d = d_raw
+        elif n == 0:
+            d = d_hat
         else:
             d = d_raw * n / 20 + d_hat * (20-n)/20
         d_vector.append(d)
