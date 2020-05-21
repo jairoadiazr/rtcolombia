@@ -205,6 +205,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         dpto = list()
     if municipio is None:
         municipio = list()
+
     start_date, end_date = pd.to_datetime(start_date), pd.to_datetime(end_date)
     locations = [*dpto, *municipio]
     df, df_covid, df_covid_raw, covid_dict = calculate_variables(locations, start_date)
@@ -217,7 +218,6 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
             'x': time_vector[1:],
             'y': np.zeros(len(time_vector)-1) + 1,
             'hoverinfo': 'none',
-            'name': 'Rt = 1',
             'line': {
                 'color': 'blue',
                 'width': 1,
@@ -225,33 +225,6 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
             },
         }
     ]
-
-    for departamento, (df_dpto, df_covid_dpto) in covid_dict.items():
-        time_vector_dpto = list(df_covid_dpto.index)
-        # Crea vector de los días medio de infecciosidad para cada fecha en time_vector_dpto 
-        d_vector = calculate_days(time_vector_dpto[1:], df_dpto)
-        
-        # Crea array con el número de infectados acumulado por día
-        cumulcases = df_covid_dpto['infectados'] - df_covid_dpto['recuperados']
-
-        # Estima rt tomando usando los días de contagio promedio
-        rt_raw = d_vector * np.diff(np.log(cumulcases.astype('float64'))) + 1
-        if len(rt_raw) > 9:
-            rt_filt = sgnl.filtfilt([1/3, 1/3, 1/3], [1.0], rt_raw)
-        else:
-            rt_filt = rt_raw
-
-        try:
-            start = time_vector_dpto.index(start_date)
-            end = time_vector_dpto.index(end_date)
-            time_vector_dpto = time_vector_dpto[start + 1: end + 2]
-            rt_filt = rt_filt[start: end + 1]
-        except ValueError as e:
-            print(e)
-            print('WTF!!!')
-            pass
-        
-        data_rt.append({'x': time_vector_dpto, 'y': rt_filt, 'mode': 'lines', 'name': f'Rt suavizado {departamento}',})
 
     annotation_dict = {
         'yanchor': 'bottom',
@@ -268,6 +241,43 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         datetime(2020, 4, 11),
         datetime(2020, 4, 27),
     ]
+    for location, (df_location, df_covid_location) in covid_dict.items():
+        update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas)
+        update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, estimados=True)
+
+    return (
+        rt_graph, 
+        update_log(df_covid, log_infectados, start_date, end_date), 
+        update_table(df, table_fig), 
+        *update_matrix(df_covid, df_covid_raw)
+    )
+
+def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, estimados=False):
+    if estimados:
+        filt = 'estimados'
+        msg = 'ajustado'
+    else:
+        filt = 'infectados'
+        msg = 'sin ajuste'
+    
+    time_vector = list(df_covid.index)
+    d_vector = calculate_days(time_vector[1:], df)
+    
+    cumulcases = df_covid[filt] - df_covid['recuperados']
+
+    # Estima rt tomando usando los días de contagio promedio
+    rt_raw = d_vector * np.diff(np.log(cumulcases.astype('float64'))) + 1
+    if len(rt_raw) > 9:
+        rt_filt = sgnl.filtfilt([1/3, 1/3, 1/3], [1.0], rt_raw)
+    else:
+        rt_filt = rt_raw
+
+    start = time_vector.index(start_date)
+    end = time_vector.index(end_date)
+    time_vector = time_vector[start + 1: end + 2]
+    rt_filt = rt_filt[start: end + 1]
+    
+    data_rt.append({'x': time_vector, 'y': rt_filt, 'mode': 'lines', 'name': f'Rt suavizado {name} ' + msg,})
 
     annotations = list()
     for i, fecha_cuarentena in enumerate(cuarentenas):
@@ -283,13 +293,6 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
     rt_graph['data'] = data_rt
     rt_graph['layout']['title']['text'] = f'Tiempo medio de recuperación: {round(d_vector[-1], 2)} días'
     rt_graph['layout']['annotations'] = annotations
-
-    return (
-        rt_graph, 
-        update_log(df_covid, log_infectados, start_date, end_date), 
-        update_table(df, table_fig), 
-        *update_matrix(df_covid, df_covid_raw)
-    )
 
 
 def update_log(df_covid, log_infectados, start_date, end_date):
