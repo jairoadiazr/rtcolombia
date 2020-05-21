@@ -83,8 +83,6 @@ covid_data['dias'] = (covid_data['fecha_recuperacion'] - covid_data['fecha_sinto
 def thousand_sep(n: int) -> str:
     return f'{n:,}'
 
-# Colors from tab10 palette
-colors = ['#d62728', '#ff7f0e', '#1f77b4'][::-1]
 
 external_stylesheets = ['https://cdn.rawgit.com/gschivley/8040fc3c7e11d2a4e7f0589ffc829a02/raw/fe763af6be3fc79eca341b04cd641124de6f6f0d/dash.css']
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
