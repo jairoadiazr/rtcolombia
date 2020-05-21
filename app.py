@@ -1,7 +1,11 @@
+# Dash
 import dash
+import dash_table
 import dash_core_components as dcc
 import dash_html_components as html
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
+
+# Librerías estándar 
 import pandas as pd
 import numpy as np
 import scipy.signal as sgnl
@@ -9,80 +13,43 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from copy import deepcopy
 
+# Clase CovidData
+from covid import CovidData
+
 # Fecha reporte
 current_date = datetime.now().date()
 
 # Obtiene información de covid Colombia
 covid_data = pd.read_json('https://www.datos.gov.co/resource/gt2j-8ykr.json?$limit=1000000')
 
-# Crea diccionarios para renombrar columnas
-rename_dict = {
-    'id_de_caso': 'id',
-    'fecha_de_notificaci_n': 'fecha_notificacion',
-    'codigo_divipola': 'id_municipio',
-    'ciudad_de_ubicaci_n': 'municipio',
-    'departamento': 'departamento',
-    'atenci_n': 'atencion',
-    'edad': 'edad',
-    'sexo': 'sexo',
-    'tipo': 'tipo_contagio',
-    'estado': 'estado_salud',
-    'pa_s_de_procedencia': 'pais_procedencia',
-    'fis': 'fecha_sintomas',
-    'fecha_de_muerte': 'fecha_muerte',
-    'fecha_diagnostico': 'fecha_diagnostico',
-    'fecha_recuperado': 'fecha_recuperacion',
-    'fecha_reporte_web': 'fecha_reporte'
-}
+# Instancia la información en la clase CovidData
+cd = CovidData(covid_data)
+cd.preprocessing_data()
 
-# Renombra las columnas
-covid_data = covid_data.rename(columns=rename_dict)
-
-# Unifica valores de las columnas
-columnas_corregir = ['municipio', 'departamento', 'atencion', 'sexo',
-                     'tipo_contagio', 'estado_salud', 'pais_procedencia']
-for col in columnas_corregir:
-    covid_data[col] = covid_data[col].fillna('-')
-    covid_data[col] = covid_data[col].apply(lambda x: x.title())
-
-# ¿Qué hacer con los pacientes recuperados sin fecha de recuperación?
-falta_fecha_recuperacion = covid_data[(covid_data['fecha_recuperacion'] == '-   -') &
-                                      (covid_data['atencion'] == 'Recuperado')].shape[0]
-if falta_fecha_recuperacion:
-    print(f'Faltantes fecha recuperación: {falta_fecha_recuperacion}')
-
-# Fechas
-fechas = ['fecha_notificacion', 'fecha_diagnostico', 'fecha_sintomas', 
-          'fecha_muerte', 'fecha_recuperacion', 'fecha_reporte']
-
-# Reemplaza fechas con valores '-   -' o 'Asintomático' por np.datetime64('NaT')
-for fecha in fechas:
-    covid_data[fecha] = covid_data[fecha].replace(['-   -', 'Asintomático'], np.datetime64('NaT'))
-    try:
-        covid_data[fecha] = pd.to_datetime(covid_data[fecha])
-    except Exception as e:
-        print('Hay una fecha en formato incorrecto: ', e)
-        covid_data[fecha] = pd.to_datetime(covid_data[fecha], errors='coerce')
-
-# Para los fallecidos, se asigna su fecha de recuperación como su fecha de muerte
-covid_data.loc[covid_data['estado_salud'] == 'Fallecido', 'fecha_recuperacion'] = covid_data[covid_data['estado_salud'] == 'Fallecido']['fecha_muerte']
-
-# Calcula el número de días desde la fecha de inicio de síntomas hasta la fecha de recuperación
-covid_data['dias'] = (covid_data['fecha_recuperacion'] - covid_data['fecha_sintomas']).apply(lambda x: x.days)
+covid_data = cd.covid_data
+d_hat = cd.d_hat
+w_hat = cd.w_hat
 
 # Funciones auxiliares
 
 def thousand_sep(n: int) -> str:
     return f'{n:,}'
 
-# Colors from tab10 palette
-colors = ['#d62728', '#ff7f0e', '#1f77b4'][::-1]
-
 external_stylesheets = ['https://cdn.rawgit.com/gschivley/8040fc3c7e11d2a4e7f0589ffc829a02/raw/fe763af6be3fc79eca341b04cd641124de6f6f0d/dash.css']
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 app.title = 'Rt Colombia'
 server = app.server
 
+graph_config = {
+    'modeBarButtonsToRemove': [
+        'autoScale2d', 'select2d', 'zoom2d',
+        'pan2d', 'toggleSpikelines',
+        'hoverCompareCartesian',
+        'zoomOut2d', 'zoomIn2d',
+        'hoverClosestCartesian',
+        'resetScale2d'
+    ]
+}
 
 app.layout = html.Div(
     [
@@ -101,12 +68,14 @@ app.layout = html.Div(
                     id='departamento',
                     options=[{'label': dpto, 'value': dpto} for dpto in np.sort(covid_data['departamento'].unique())],
                     placeholder='Seleccione un departamento o distrito especial',
+                    multi=True,
                 ),
                 html.Label('Municipio'),
                 dcc.Dropdown(
                     id='municipio',
                     options=[{'label': city, 'value': city} for city in np.sort(covid_data['municipio'].unique())],
                     placeholder='Seleccione un municipio',
+                    multi=True,
                 ),
                 html.Label('Filtro de fecha'),
                 dcc.DatePickerRange(
@@ -123,39 +92,79 @@ app.layout = html.Div(
             [
                 dcc.Graph(
                     id='rt-graph',
-                    config={
-                        'modeBarButtonsToRemove': [
-                            'autoScale2d', 'select2d', 'zoom2d',
-                            'pan2d', 'toggleSpikelines',
-                            'hoverCompareCartesian',
-                            'zoomOut2d', 'zoomIn2d',
-                            'hoverClosestCartesian',
-                            'resetScale2d'
-                        ]
-                    }
+                    config=graph_config,
+                    figure=go.Figure(
+                        layout={
+                            'legend': {
+                                'orientation': 'h',
+                                "x": 0.5,
+                                'xanchor': 'center'
+                            },
+                            'title': {'text': ''},
+                            'margin': {'l': 80, 'r': 50, 't': 40},
+                            'hovermode': 'closest',
+                            'plot_bgcolor': 'rgba(0,0,0,0)',
+                            'yaxis': {
+                                'title': 'Rt',
+                                'showgrid': True,
+                                'gridcolor': 'whitesmoke'
+                            },
+                            'xaxis': {
+                                'showgrid': True,
+                                'gridcolor': 'whitesmoke' 
+                            },
+                        }
+                    )
                 ),
+                html.Label('La información de este estimado no es confiable la última semana'),
                 dcc.Graph(
                     id='table-fig',
-                    figure={
-                        'layout': {
-                            'height':400,
-                            'margin': {'l': 80, 'r': 50, 't': 40}
-                        }
-                    }
+                    figure=go.Figure(
+                        go.Table(
+                            cells={
+                                'line_color': 'darkslategray',
+                                'fill_color': ['lightgray', 'white','lightgray', 'white'],
+                                'font_size': 12,
+                                'height': 30
+                            },
+                            header = {
+                                'values': ['Casos', 'Número', 'Infectados', 'Número'],
+                                'line_color': 'darkslategray',
+                                'fill_color': 'gray',
+                                'font': {'color':'white', 'size': 12},
+                                'height': 30
+                            },
+                        )
+                    )
                 ),
                 dcc.Graph(
                     id='log_infectados',
-                    config={
-                        'modeBarButtonsToRemove': [
-                            'autoScale2d', 'select2d', 
-                            'zoom2d', 'pan2d', 
-                            'toggleSpikelines',
-                            'hoverCompareCartesian',
-                            'zoomOut2d', 'zoomIn2d',
-                            'hoverClosestCartesian',
-                            'resetScale2d'
-                        ]
-                    }
+                    config=graph_config,
+                    figure=go.Figure(
+                        layout={
+                            'height':400,
+                            'legend': {
+                                'orientation': 'h',
+                                "x": 0.5,
+                                'xanchor': 'center'
+                            },
+                            'margin': {'l': 80, 'r': 50, 't': 40},
+                            'hovermode': 'closest',
+                            'plot_bgcolor': 'rgba(0,0,0,0)',
+                            'yaxis': {
+                                'title': 'log(infectados)',
+                                'showgrid': True,
+                                'gridcolor': 'whitesmoke'
+                            },
+                            'xaxis': {
+                                'showgrid': True,
+                                'gridcolor': 'whitesmoke' 
+                            },
+                        }
+                    )
+                ),
+                dash_table.DataTable(
+                    id='days_table',
                 )
             ],
         ),
@@ -176,177 +185,44 @@ className='container'
         Output('rt-graph', 'figure'),
         Output('log_infectados', 'figure'),
         Output('table-fig', 'figure'),
+        Output('days_table', 'columns'),
+        Output('days_table', 'data')
     ],
     [
         Input('fecha', 'start_date'),
         Input('fecha', 'end_date'),
         Input('departamento', 'value'),
         Input('municipio', 'value'),
+    ],
+    [
+        State('rt-graph', 'figure'),
+        State('log_infectados', 'figure'),
+        State('table-fig', 'figure'),
     ]
 )
-def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, municipio: str=None) -> list:
-    if dpto is None and municipio is None:
-        df = covid_data
-    elif municipio is None:
-        df = covid_data[covid_data['departamento'] == dpto]
-    elif dpto is None:
-        df = covid_data[covid_data['municipio'] == municipio]
-    else:
-        df = covid_data[(covid_data['departamento'] == dpto) & covid_data['municipio'] == municipio]
+def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, municipio: str=None, rt_graph=None, log_infectados=None, table_fig=None) -> list:
+    if dpto is None:
+        dpto = list()
+    if municipio is None:
+        municipio = list()
 
-    df_imp = df[df['tipo_contagio'] == 'Importado']
-    df_no_imp = df[df['tipo_contagio'] != 'Importado']
-
-    df_fall = df[df['atencion'] == 'Fallecido']
-    df_no_imp_fall = df_no_imp[df_no_imp['atencion'] == 'Fallecido']
-    
-    df_recu = df[df['atencion'] == 'Recuperado']
-    df_no_imp_recu = df_no_imp[df_no_imp['atencion'] == 'Recuperado']
-    
-    df_infect = df[df['atencion'].isin(['Hospital', 'Hospital Uci', 'Casa'])]
-    df_hosp = df_infect[df_infect['atencion'] == 'Hospital']
-    df_uci = df_infect[df_infect['atencion'] == 'Hospital Uci']
-    df_casa = df_infect[df_infect['atencion'] == 'Casa']
-    
-    # Si para el DataFrame actual no se tiene información suficiente, se usa la información total del país
-    if df['dias'].count() >= 20:
-        df_days = df
-    else:
-        df_days = covid_data
-    
-    # Calcula media y mediana de tiempo de recuperación 
-    d_mean = np.nanmean(df_days['dias'])
-    d_hat = np.nanmedian(df_days['dias'])
-    d_hat_max = np.nanquantile(df_days['dias'], 0.975)
-    d_hat_min = np.nanquantile(df_days['dias'], 0.025)
-
-    print('Media de días = ', d_mean)
-    print('Mediana de días = ', d_hat)
-
-    # Número de infectados por fecha
-    df1 = df_no_imp.groupby('fecha_sintomas').count()[['id']].rename(columns={'id': 'infectados'})
-    
-    # Número de recuperados por fecha
-    df2 = df_recu.groupby('fecha_recuperacion').count()[['id']].rename(columns={'id': 'recuperados'})
-
-    # Número de fallecidos por fecha
-    df3 = df_fall.groupby('fecha_muerte').count()[['id']].rename(columns={'id': 'fallecidos'})
-
-    # Mergea (y ordena) los DataFrames
-    df_covid = df1.merge(df2, how='outer', left_index=True, right_index=True).merge(df3, how='outer', left_index=True, right_index=True)
-
-    # Fecha primer caso
-    first_date = df_covid.index.min()
-
-    # Crea DataFrame de fechas continuas desde el principio de la epidemia
-    df_dates = pd.DataFrame(index=pd.date_range(start=first_date, end=current_date))
-
-    # Rellena el DataFrame para que en los días que no hubo casos reportados asignar el valor de 0
-    df_covid = df_dates.merge(df_covid, how='left', left_index=True, right_index=True, sort=True).fillna(0).cumsum()
-
-    # Filtra el DataFrame con las fechas indicadas
-    df_covid = df_covid[(start_date <= df_covid.index) & (df_covid.index <= end_date)]
+    start_date, end_date = pd.to_datetime(start_date), pd.to_datetime(end_date)
+    locations = [*dpto, *municipio]
+    df, df_covid, df_covid_raw, covid_dict = calculate_variables(locations, start_date)
 
     # Crea vector de tiempo para graficar
-    time_vector = list(df_covid.index)
+    time_vector = list(df_covid[(start_date <= df_covid.index) & (df_covid.index <= end_date)].index)
 
-    # Imprime DataFrame con los infectados, recuperados y fallecidos por día
-    print(df_covid.head())
-    print(df_covid.tail())
-    
-    # Crea array con el número de infectados acumulado por día
-    cum_infectados = df_covid['infectados']
-    cum_recu = df_covid['recuperados']
-    cumulcases = cum_infectados - cum_recu
-    print('Infectados acumulados', cum_infectados, sep='\n', end='\n\n')
-    print('Recuperados acumulados', cum_recu, sep='\n', end='\n\n')
-    print('Actuales acumulados', cumulcases, sep='\n', end='\n\n')
-
-    # Log infectados
-    log_infect = np.log(cumulcases.astype('float64'))
-
-    # Estima rt tomando usando los días de contagio promedio
-    rt_raw = d_hat * np.diff(np.log(cumulcases.astype('float64')))+1
-    if len(rt_raw) > 9:
-        rt_filt = sgnl.filtfilt([0.3333, 0.3333, 0.3333], [1.0], rt_raw)
-    else:
-        rt_filt = rt_raw
-
-    # rt_max
-    rt_raw_max = d_hat_max * np.diff(np.log(cumulcases.astype('float64'))) + 1
-    if len(rt_raw) > 9:
-        rt_filt_max = sgnl.filtfilt([0.3333, 0.3333, 0.3333], [1.0], rt_raw_max)
-    else:
-        rt_filt_max = rt_raw_max
-    
-    # rt_min
-    rt_raw_min = d_hat_min * np.diff(np.log(cumulcases.astype('float64'))) + 1
-    if len(rt_raw) > 9:
-        rt_filt_min = sgnl.filtfilt([0.3333, 0.3333, 0.3333], [1.0], rt_raw_min)
-    else:
-        rt_filt_min = rt_raw_min
-
-    # rt_1
-    rt_1 = np.zeros(len(time_vector)) + 1
-
-    tick_suffix = ' '
-
-    data_infectados = [
-        {
-            'x': time_vector,
-            'y': log_infect,
-            'hoverinfo': 'text',
-            'type': 'scatter',
-            'mode': 'lines',
-            'name': 'log(infectados)',
-            'line': {
-                'color': colors[0],
-                'width': 1
-            },
-            'text': [f'{date}<br>{val:.2f} ' for date, val in zip(time_vector, log_infect)]
-        }
-    ]
-    
     data_rt = [
         {
-            'x': time_vector,
-            'y': rt_filt,
-            'hoverinfo': 'text',
-            'type': 'scatter',
-            'mode': 'lines',
-            'name': 'Rt suavizado',
-            'line': {
-                'color': 'darkgreen',
-                'width': 1
-            },
-            'text': [f'{date}<br>{val:.2f} ' for date, val in zip(time_vector, rt_filt)]
-        },
-        {
-            'x': time_vector,
-            'y': rt_raw,
-            'hoverinfo': 'text',
-            'type': 'scatter',
-            'mode': 'lines',
-            'name': 'Rt diario',
-            'line': {
-                'color': 'lightgreen',
-                'width': 1
-            },
-            'text': [f'{date}<br>{val:.2f} ' for date, val in zip(time_vector, rt_raw)]
-        },
-        {
-            'x': time_vector,
-            'y': rt_1,
-            'hoverinfo': 'text',
-            'type': 'scatter',
-            'mode': 'lines',
-            'name': 'Rt = 1',
+            'x': time_vector[1:],
+            'y': np.zeros(len(time_vector)-1) + 1,
+            'hoverinfo': 'none',
             'line': {
                 'color': 'blue',
                 'width': 1,
                 'dash': 'dash'
             },
-            'text': [f'{date}<br>{val:.2f} ' for date, val in zip(time_vector, rt_1)]
         }
     ]
 
@@ -365,8 +241,45 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         datetime(2020, 4, 11),
         datetime(2020, 4, 27),
     ]
+    for location, (df_location, df_covid_location) in covid_dict.items():
+        update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas)
+        update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, estimados=True)
 
-    annotation = list()
+    return (
+        rt_graph, 
+        update_log(df_covid, log_infectados, start_date, end_date), 
+        update_table(df, table_fig), 
+        *update_matrix(df_covid, df_covid_raw)
+    )
+
+def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, estimados=False):
+    if estimados:
+        filt = 'estimados'
+        msg = 'ajustado (nowcast)'
+    else:
+        filt = 'infectados'
+        msg = 'sin ajuste'
+    
+    time_vector = list(df_covid.index)
+    d_vector = calculate_days(time_vector[1:], df)
+    
+    cumulcases = df_covid[filt] - df_covid['recuperados']
+
+    # Estima rt tomando usando los días de contagio promedio
+    rt_raw = d_vector * np.diff(np.log(cumulcases.astype('float64'))) + 1
+    if len(rt_raw) > 9:
+        rt_filt = sgnl.filtfilt([1/3, 1/3, 1/3], [1.0], rt_raw)
+    else:
+        rt_filt = rt_raw
+
+    start = time_vector.index(start_date)
+    end = time_vector.index(end_date)
+    time_vector = time_vector[start + 1: end + 2]
+    rt_filt = rt_filt[start: end + 1]
+    
+    data_rt.append({'x': time_vector, 'y': rt_filt, 'mode': 'lines', 'name': f'Rt suavizado {name} ' + msg,})
+
+    annotations = list()
     for i, fecha_cuarentena in enumerate(cuarentenas):
         new_dict = deepcopy(annotation_dict)
         if fecha_cuarentena in time_vector:
@@ -375,95 +288,131 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
             continue
         new_dict['x'] = fecha_cuarentena
         new_dict['text'] = f'{i + 1}ᵃ cuarentena'
-        annotation.append(new_dict)
+        annotations.append(new_dict)
 
-    # Actualiza gráfica de infectados
-    log_infectados={
-        'data': data_infectados,
-        'layout': {
-            'height':400,
-            'legend': {
-                'orientation': 'h',
-                "x": 0.5,
-                'xanchor': 'center'
-            },
-            'margin': {'l': 80, 'r': 50, 't': 40},
-            'hovermode': 'closest',
-            'yaxis': {
-                'ticksuffix': tick_suffix,
-                'title': 'log(infectados)',
-                'showgrid': True,
-            },
-            'xaxis': {
-                'range': [start_date, end_date],
-                'showgrid': True,
-            },
-        }
-    }
+    rt_graph['data'] = data_rt
+    rt_graph['layout']['title']['text'] = f'Tiempo medio de recuperación: {round(d_vector[-1], 2)} días'
+    rt_graph['layout']['annotations'] = annotations
 
-    # Actualiza gráfica de rt
-    rt_graph = {
-        'data': data_rt,
-        'layout': {
-            'title': f'Tiempo medio de recuperación: {round(d_hat, 2)} días',
-            'legend': {
-                'orientation': 'h',
-                "x": 0.5,
-                'xanchor': 'center'
-            },
-            'margin': {'l': 80, 'r': 50, 't': 40},
-            'annotations': annotation,
-            'hovermode': 'closest',
-            'yaxis': {
-                'ticksuffix': tick_suffix,
-                'title': 'Rt',
-                'showgrid': True,
-            },
-            'xaxis': {
-                'range': [start_date, end_date],
-                'showgrid': True,
-            },
+
+def update_log(df_covid, log_infectados, start_date, end_date):
+    df_covid = df_covid[(start_date <= df_covid.index) & (df_covid.index <= end_date)]
+    time_vector = list(df_covid.index)
+    cumulcases = df_covid['infectados'] - df_covid['recuperados']
+    log_infect = np.log(cumulcases.astype('float64'))
+    data_infectados = [
+        {
+            'x': time_vector,
+            'y': log_infect,
+            'mode': 'lines',
+            'name': 'log(infectados)',
         }
-    }
-    
+    ]
+    log_infectados['data'] = data_infectados
+    return log_infectados
+
+
+def update_matrix(df_covid, df_covid_raw):
+    data_table = df_covid_raw.merge(df_covid, how='inner', left_index=True, right_index=True).reset_index().rename(columns={'index': 'fecha'}).tail(10).iloc[::-1]
+    columns = [{'name': i, 'id': i} for i in data_table.columns]
+    data = data_table.to_dict('records')
+    return columns, data
+
+
+def update_table(df, table_fig):
+    # Actualiza tabla
+    positivos = df.shape[0]
+    importados = df[df['tipo_contagio'] == 'Importado'].shape[0]
+    recuperados = df[df['atencion'] == 'Recuperado'].shape[0]
+    fallecidos = df[df['atencion'] == 'Fallecido'].shape[0]
+    casa = df[df['atencion'] == 'Casa'].shape[0]
+    hosp = df[df['atencion'] == 'Hospital'].shape[0]
+    uci = df[df['atencion'] == 'Hospital Uci'].shape[0]
+    activos = casa + hosp + uci
     table_values = [
         ['Positivos', 'Importados', 'Recuperados','Fallecidos'], 
-        list(map(thousand_sep, [df.shape[0], df_imp.shape[0], df_recu.shape[0], df_fall.shape[0]])),
+        list(map(thousand_sep, [positivos, importados, recuperados, fallecidos])),
         ['Activos', 'En casa', 'Hospitalizados', 'En UCI'],
-        list(map(thousand_sep, [df_infect.shape[0], df_casa.shape[0], df_hosp.shape[0], df_uci.shape[0]]))
+        list(map(thousand_sep, [activos, casa, hosp, uci]))
     ]
 
-    table = go.Figure(
-        data=[
-            go.Table(
-                columnorder = [1,2,3,4],
-                columnwidth = [400,400,400,400],
-                header = dict(
-                    values = [
-                        ['Casos'],
-                        ['Número'],
-                        ['Infectados'],
-                        ['Número']
-                    ],
-                    line_color='darkslategray',
-                    fill_color='gray',
-                    align=['center'],
-                    font=dict(color='white', size=12),
-                    height=30
-                ),
-                cells=dict(
-                    values=table_values,
-                    line_color='darkslategray',
-                    fill=dict(color=['lightgray', 'white','lightgray', 'white']),
-                    align=['center'],
-                    font_size=12,
-                    height=30
-                )
-            )
-        ]
-    )
+    table_fig['data'][0]['cells']['values'] = table_values
+    return table_fig
 
-    return rt_graph, log_infectados, table
+
+def calculate_days(time_vector, df):
+    d_vector = list()
+    for day in time_vector:
+        new_df = df[df['fecha_sintomas'] <= day]
+        n = new_df['dias'].count()
+        d_raw = new_df['dias'].median(skipna=True)
+        if n >= 20:
+            d = d_raw
+        elif n == 0:
+            d = d_hat
+        else:
+            d = d_raw * n / 20 + d_hat * (20-n)/20
+        d_vector.append(d)
+    return d_vector
+
+def delay_probability(df):
+    total = df.shape[0]
+    df_filter = df.groupby('dias_retraso', sort=True).count()['id']
+    probabilities = {ix: sum(df_filter.loc[df_filter.index <= ix])/total for ix in df_filter.index}
+    return probabilities
+
+def get_dfs(df, start_date):
+    # Número de infectados por fecha
+    df1 = df.groupby('fecha_sintomas').count()[['id']].rename(columns={'id': 'nuevos_infectados'})
+    # Número de recuperados por fecha
+    df2 = df.groupby('fecha_recuperacion').count()[['id']].rename(columns={'id': 'nuevos_recuperados'})
+    # Número de fallecidos por fecha
+    df3 = df.groupby('fecha_muerte').count()[['id']].rename(columns={'id': 'nuevos_fallecidos'})
+    # Mergea (y ordena) los DataFrames
+    df_merged = df1.merge(df2, how='outer', left_index=True, right_index=True).merge(df3, how='outer', left_index=True, right_index=True)
+    # Crea DataFrame de fechas continuas desde el principio de la epidemia
+    df_dates = pd.DataFrame(index=pd.date_range(start=min(df_merged.index.min(), start_date), end=current_date))
+    # Rellena el DataFrame para que en los días que no hubo casos reportados asignar el valor de 0
+    df_covid_raw = df_dates.merge(df_merged, how='left', left_index=True, right_index=True, sort=True).fillna(0)
+    # Agrega estimados
+    p = delay_probability(df)
+    probabilities = [1 / p[day] if day in p else 1 for day in (datetime.now() - df_dates.index).days]
+    df_covid_raw['nuevos_estimados'] = df_covid_raw['nuevos_infectados'] * probabilities
+    # Crea DataFrame con los infectados acumulados hasta la fecha
+    rename_dict = {
+        'nuevos_infectados': 'infectados', 
+        'nuevos_recuperados': 'recuperados', 
+        'nuevos_fallecidos': 'fallecidos',
+        'nuevos_estimados': 'estimados'
+        }
+    df_covid = df_covid_raw.cumsum().rename(columns=rename_dict)
+    
+    return df_covid_raw, df_covid
+
+
+def calculate_variables(locations, start_date):
+    if not locations:
+        df = covid_data
+        df_covid_raw, df_covid = get_dfs(df, start_date)
+        covid_dict = {'Colombia': [df, df_covid]}
+    else:
+        covid_dict = dict()
+        dfs = list()
+        raws = list()
+        cleans = list()
+        for location in locations:
+            df = covid_data[(covid_data['departamento'] == location) | (covid_data['municipio'] == location)]
+            df_covid_raw, df_covid = get_dfs(df, start_date)
+            dfs.append(df)
+            raws.append(df_covid_raw)
+            cleans.append(df_covid)
+            covid_dict[location] = (df, df_covid)
+        
+        df_covid_raw = pd.concat(raws).groupby(level=0, sort=True).sum()
+        df_covid = pd.concat(cleans).groupby(level=0, sort=True).sum()
+        df = pd.concat(dfs).reset_index(drop=True)
+
+    return df, df_covid, df_covid_raw, covid_dict
 
 if __name__ == '__main__':
     app.run_server(debug=True, host='0.0.0.0')
