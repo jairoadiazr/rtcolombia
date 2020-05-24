@@ -35,8 +35,7 @@ w_hat = cd.w_hat
 def thousand_sep(n: int) -> str:
     return f'{n:,}'
 
-external_stylesheets = ['https://cdn.rawgit.com/gschivley/8040fc3c7e11d2a4e7f0589ffc829a02/raw/fe763af6be3fc79eca341b04cd641124de6f6f0d/dash.css']
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+app = dash.Dash(__name__)
 app.title = 'Rt Colombia'
 server = app.server
 
