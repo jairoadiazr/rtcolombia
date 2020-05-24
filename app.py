@@ -90,7 +90,7 @@ app.layout = html.Div(
         html.Div(
             [
                 dcc.Graph(
-                    id='rt-graph',
+                    id='rt_graph',
                     config=graph_config,
                     figure=go.Figure(
                         layout={
@@ -207,7 +207,7 @@ className='container'
 
 @app.callback(
     [
-        Output('rt-graph', 'figure'),
+        Output('rt_graph', 'figure'),
         Output('log_infectados', 'figure'),
         Output('table-fig', 'figure'),
         Output('days_table', 'columns'),
@@ -221,7 +221,7 @@ className='container'
         Input('municipio', 'value'),
     ],
     [
-        State('rt-graph', 'figure'),
+        State('rt_graph', 'figure'),
         State('log_infectados', 'figure'),
         State('table-fig', 'figure'),
         State('muertes', 'figure'),
