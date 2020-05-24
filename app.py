@@ -165,7 +165,33 @@ app.layout = html.Div(
                 ),
                 dash_table.DataTable(
                     id='days_table',
-                )
+                ),
+                dcc.Graph(
+                    id='muertes',
+                    config=graph_config,
+                    figure=go.Figure(
+                        layout={
+                            'height':400,
+                            'legend': {
+                                'orientation': 'h',
+                                "x": 0.5,
+                                'xanchor': 'center'
+                            },
+                            'margin': {'l': 80, 'r': 50, 't': 40},
+                            'hovermode': 'closest',
+                            'plot_bgcolor': 'rgba(0,0,0,0)',
+                            'yaxis': {
+                                'title': 'muertes',
+                                'showgrid': True,
+                                'gridcolor': 'whitesmoke'
+                            },
+                            'xaxis': {
+                                'showgrid': True,
+                                'gridcolor': 'whitesmoke' 
+                            },
+                        }
+                    )
+                ),
             ],
         ),
             dcc.Markdown('Elaborado por:'),
@@ -186,7 +212,8 @@ className='container'
         Output('log_infectados', 'figure'),
         Output('table-fig', 'figure'),
         Output('days_table', 'columns'),
-        Output('days_table', 'data')
+        Output('days_table', 'data'),
+        Output('muertes', 'figure'),
     ],
     [
         Input('fecha', 'start_date'),
@@ -198,9 +225,11 @@ className='container'
         State('rt-graph', 'figure'),
         State('log_infectados', 'figure'),
         State('table-fig', 'figure'),
+        State('muertes', 'figure'),
     ]
 )
-def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, municipio: str=None, rt_graph=None, log_infectados=None, table_fig=None) -> list:
+def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, municipio: str=None, \
+    rt_graph=None, log_infectados=None, table_fig=None, muertes=None) -> list:
     if dpto is None:
         dpto = list()
     if municipio is None:
@@ -249,7 +278,8 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         rt_graph, 
         update_log(df_covid, log_infectados, start_date, end_date), 
         update_table(df, table_fig), 
-        *update_matrix(df_covid, df_covid_raw)
+        *update_matrix(df_covid, df_covid_raw),
+        update_muertes(df_covid, muertes, start_date, end_date),
     )
 
 def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, estimados=False):
@@ -310,6 +340,24 @@ def update_log(df_covid, log_infectados, start_date, end_date):
     ]
     log_infectados['data'] = data_infectados
     return log_infectados
+
+
+def update_muertes(df_covid, muertes, start_date, end_date):
+    df_covid = df_covid[(start_date <= df_covid.index) & (df_covid.index <= end_date)]
+    time_vector = list(df_covid.index)
+    cumuldies = df_covid['fallecidos']
+    # log_infect = np.log(cumulcases.astype('float64'))
+    data_muertos = [
+        {
+            'x': time_vector,
+            'y': cumuldies,
+            'type': 'bar',
+            # 'mode': 'lines',
+            'name': 'muertos acumulados',
+        }
+    ]
+    muertes['data'] = data_muertos
+    return muertes
 
 
 def update_matrix(df_covid, df_covid_raw):
