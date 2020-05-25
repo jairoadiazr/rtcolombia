@@ -60,7 +60,7 @@ class CovidData:
                 'fecha_muerte', 'fecha_recuperacion', 'fecha_reporte']
 
         for fecha in fechas:
-            self.covid_data[fecha] = self.covid_data[fecha].replace(['-   -', 'Asintomático'], np.datetime64('NaT'))
+            self.covid_data[fecha] = self.covid_data[fecha].replace(['-   -', 'Asintomático', 'asintomático'], np.datetime64('NaT'))
             try:
                 self.covid_data[fecha] = pd.to_datetime(self.covid_data[fecha])
             except Exception as e:
