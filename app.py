@@ -114,23 +114,31 @@ app.layout = html.Div([
         ),
         html.Div([
             html.Div([
-                html.Div(
-                    dcc.Markdown(f'Tiempo medio de infecciosidad: {d_hat}'),
+                html.Div([
+                    html.P(d_hat, className='data_value'),
+                    html.P('Media de días infectado', className='data_info'),
+                ],
                     style={'width': '25%'},
                     className='pretty_container',
                 ),
-                html.Div(
-                    dcc.Markdown(f'Tiempo medio de retraso en el reporte: {w_hat}'),
+                html.Div([
+                    html.P(w_hat, className='data_value'),
+                    html.P('Media de retraso reporte', className='data_info')
+                ],
                     style={'width': '25%'},
                     className='pretty_container',
                 ),
-                html.Div(
-                    dcc.Markdown(f'Infectados activos: {100}'),
+                html.Div([
+                    html.P(0, id='num_inf', className='data_value'),
+                    html.P('Infectados activos', className='data_info'),
+                ],
                     style={'width': '25%'},
                     className='pretty_container',
                 ),
-                html.Div(
-                    dcc.Markdown(f'Fallecidos: {1}'),
+                html.Div([
+                    html.P(0, id='num_rec', className='data_value'),
+                    html.P('Recuperados o fallecidos', className='data_info')
+                ],
                     style={'width': '25%'},
                     className='pretty_container',
                 ),
@@ -294,6 +302,8 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
         Output('daily_deaths', 'figure'),
         Output('cum_deaths', 'figure'),
         Output('status_infectados', 'figure'),
+        Output('num_inf', 'children'),
+        Output('num_rec', 'children'),
     ],
     [
         Input('fecha', 'start_date'),
@@ -373,6 +383,8 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         *update_matrix(df_covid, df_covid_raw),
         *update_deaths(df_covid_filter, df_covid_raw_filter, daily_deaths, cum_deaths),
         status_infectados,
+        thousand_sep(df_covid.loc[end_date, 'infectados']),
+        thousand_sep(df_covid.loc[end_date, 'recuperados']),
     )
 
 def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, color, estimados=False):

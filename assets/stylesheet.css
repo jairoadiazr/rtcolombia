@@ -455,6 +455,19 @@ hr {
   color: #cacccd;
 }
 
+.data_value{
+  color: black;
+  text-align: center;
+  font-size: 3rem;
+  margin: 0;
+}
+
+.data_info{
+  color: grey;
+  margin: 0;
+  text-align: center;
+}
+
 
 /* Media Queries
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
