@@ -129,9 +129,9 @@ app.layout = html.Div([
                                 'xanchor': 'center'
                             },
                             'title': {'text': ''},
-                            # 'margin': {'l': 80, 'r': 50, 't': 40},
+                            'margin': {'t': 40, 'r': 40, 'l': 40, 'b': 60},
                             'hovermode': 'closest',
-                            'plot_bgcolor': 'rgba(0,0,0,0)',
+                            'plot_bgcolor': '#fff',
                             'yaxis': {
                                 'title': 'Rt',
                                 'showgrid': True,
@@ -163,15 +163,14 @@ app.layout = html.Div([
                 config=graph_config,
                 figure=go.Figure(
                     layout={
-                        'height':400,
                         'legend': {
                             'orientation': 'h',
                             'x': 0.5,
                             'xanchor': 'center'
                         },
-                        'margin': {'l': 80, 'r': 50, 't': 40},
+                        'margin': {'t': 40, 'r': 40, 'l': 40, 'b': 60},
                         'hovermode': 'closest',
-                        'plot_bgcolor': 'rgba(0,0,0,0)',
+                        'plot_bgcolor': '#fff',
                         'yaxis': {
                             'title': 'log(Infectados activos)',
                             'showgrid': True,
@@ -193,15 +192,14 @@ app.layout = html.Div([
                 config=graph_config,
                 figure=go.Figure(
                     layout={
-                        'height':400,
                         'legend': {
                             'orientation': 'h',
                             'x': 0.5,
                             'xanchor': 'center'
                         },
-                        'margin': {'l': 80, 'r': 50, 't': 40},
+                        'margin': {'t': 40, 'r': 40, 'l': 40, 'b': 60},
                         'hovermode': 'closest',
-                        'plot_bgcolor': 'rgba(0,0,0,0)',
+                        'plot_bgcolor': '#fff',
                         'yaxis': {
                             'title': 'Infectados diarios',
                             'showgrid': True,
@@ -240,15 +238,14 @@ app.layout = html.Div([
             config=graph_config,
             figure=go.Figure(
                 layout={
-                    'height':400,
                     'legend': {
                         'orientation': 'h',
                         'x': 0.5,
                         'xanchor': 'center'
                     },
-                    'margin': {'l': 80, 'r': 50, 't': 40},
+                    'margin': {'t': 40, 'r': 40, 'l': 40, 'b': 60},
                     'hovermode': 'closest',
-                    'plot_bgcolor': 'rgba(0,0,0,0)',
+                    'plot_bgcolor': '#fff',
                     'yaxis': {
                         'title': 'Fallecidos acumulados',
                         'showgrid': True,
