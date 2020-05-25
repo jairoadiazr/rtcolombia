@@ -182,6 +182,7 @@ app.layout = html.Div([
                             'showgrid': True,
                             'gridcolor': 'whitesmoke'
                         },
+                        'barmode': 'stack',
                     }
                 )
             ),
@@ -403,21 +404,35 @@ def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annot
 def update_infectados(df_covid, df_covid_raw, log_infectados, daily_infectados, start_date, end_date):
     time_vector = list(df_covid.index)
     cumulcases = df_covid['infectados'] - df_covid['recuperados']
+    estimate_cumulcases = df_covid['estimados'] - df_covid['recuperados']
     log_infect = np.log(cumulcases.astype('float64'))
+    log_estim = np.log(estimate_cumulcases.astype('float64'))
     data_log = [
         {
             'x': time_vector,
             'y': log_infect,
             'mode': 'lines',
             'name': 'Infectados acumulados',
+        },
+        {
+            'x': time_vector,
+            'y': log_estim,
+            'mode': 'lines',
+            'name': 'Estimados acumulados',
         }
     ]
     data_cum = [
         {
             'x': time_vector,
-            'y': df_covid_raw['nuevos_estimados'],
+            'y': df_covid_raw['nuevos_infectados'],
             'type': 'bar',
-            'name': 'Infectados acumulados',
+            'name': 'Infectados reportados',
+        },
+        {
+            'x': time_vector,
+            'y': df_covid_raw['nuevos_estimados'] - df_covid_raw['nuevos_infectados'],
+            'type': 'bar',
+            'name': 'Estimados',
         }
     ]
     log_infectados['data'] = data_log
