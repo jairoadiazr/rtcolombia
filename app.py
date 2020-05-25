@@ -127,6 +127,9 @@ app.layout = html.Div([
     className='row',
     style={"display": "flex"},
     ),
+    dcc.Markdown('**IMPORTANTE:** El reporte real de infectados y recuperados a la fecha presenta en promedio un retraso mayor \
+        a 7 días por lo que la interpretación de los valores de Rt para fechas menores a 7 días a partir del día de hoy debe\
+             ser hecha con precaución'),
     html.Div([
         html.Div(
             dcc.Graph(
@@ -144,7 +147,7 @@ app.layout = html.Div([
                         'hovermode': 'closest',
                         'plot_bgcolor': 'rgba(0,0,0,0)',
                         'yaxis': {
-                            'title': 'log(Infectados acumulados)',
+                            'title': 'log(Infectados activos)',
                             'showgrid': True,
                             'gridcolor': 'whitesmoke'
                         },
@@ -458,6 +461,8 @@ def update_deaths(df_covid, cum_deaths, start_date, end_date):
 def update_matrix(df_covid, df_covid_raw):
     data_table = df_covid.merge(df_covid_raw, how='inner', left_index=True, right_index=True).reset_index().rename(columns={'index': 'fecha'}).tail(10).iloc[::-1]
     data_table['fecha'] = data_table['fecha'].dt.date
+    data_table['recuperados'] = data_table['recuperados'] - data_table['fallecidos']
+    data_table['nuevos_recuperados'] = data_table['nuevos_recuperados'] - data_table['nuevos_fallecidos']
     parse_head = lambda x: ' '.join(map(lambda y: y.title(), x.split('_')))
     columns = [{'name': parse_head(i), 'id': i} for i in data_table.columns]
     data = data_table.to_dict('records')
