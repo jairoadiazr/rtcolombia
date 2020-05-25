@@ -202,33 +202,36 @@ app.layout = html.Div([
                 'fontWeight': 'bold'
             },
         ),
-        className='pretty_container'
+        className='pretty_container',
     ),
-    dcc.Graph(
-        id='muertes',
-        config=graph_config,
-        figure=go.Figure(
-            layout={
-                'height':400,
-                'legend': {
-                    'orientation': 'h',
-                    "x": 0.5,
-                    'xanchor': 'center'
-                },
-                'margin': {'l': 80, 'r': 50, 't': 40},
-                'hovermode': 'closest',
-                'plot_bgcolor': 'rgba(0,0,0,0)',
-                'yaxis': {
-                    'title': 'muertes',
-                    'showgrid': True,
-                    'gridcolor': 'whitesmoke'
-                },
-                'xaxis': {
-                    'showgrid': True,
-                    'gridcolor': 'whitesmoke' 
-                },
-            }
-        )
+    html.Div(
+        dcc.Graph(
+            id='cum_deaths',
+            config=graph_config,
+            figure=go.Figure(
+                layout={
+                    'height':400,
+                    'legend': {
+                        'orientation': 'h',
+                        "x": 0.5,
+                        'xanchor': 'center'
+                    },
+                    'margin': {'l': 80, 'r': 50, 't': 40},
+                    'hovermode': 'closest',
+                    'plot_bgcolor': 'rgba(0,0,0,0)',
+                    'yaxis': {
+                        'title': 'Fallecidos acumulados',
+                        'showgrid': True,
+                        'gridcolor': 'whitesmoke'
+                    },
+                    'xaxis': {
+                        'showgrid': True,
+                        'gridcolor': 'whitesmoke'
+                    },
+                }
+            )
+        ),
+        className='pretty_container',
     ),
     dcc.Graph(
         id='info_table',
@@ -271,7 +274,7 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
         Output('info_table', 'figure'),
         Output('days_table', 'columns'),
         Output('days_table', 'data'),
-        Output('muertes', 'figure'),
+        Output('cum_deaths', 'figure'),
     ],
     [
         Input('fecha', 'start_date'),
@@ -284,11 +287,11 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
         State('log_infectados', 'figure'),
         State('cum_infectados', 'figure'),
         State('info_table', 'figure'),
-        State('muertes', 'figure'),
+        State('cum_deaths', 'figure'),
     ]
 )
 def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, municipio: str=None, \
-    rt_graph=None, log_infectados=None, cum_infectados=None, info_table=None, muertes=None) -> list:
+    rt_graph=None, log_infectados=None, cum_infectados=None, info_table=None, cum_deaths=None) -> list:
     if dpto is None:
         dpto = list()
     if municipio is None:
@@ -341,7 +344,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         *update_infectados(df_covid_filter, log_infectados, cum_infectados, start_date, end_date),
         update_table(df, info_table), 
         *update_matrix(df_covid, df_covid_raw),
-        update_muertes(df_covid_filter, muertes, start_date, end_date),
+        update_deaths(df_covid_filter, cum_deaths, start_date, end_date),
     )
 
 def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, color, estimados=False):
@@ -421,19 +424,19 @@ def update_infectados(df_covid, log_infectados, cum_infectados, start_date, end_
     return log_infectados, cum_infectados
 
 
-def update_muertes(df_covid, muertes, start_date, end_date):
+def update_deaths(df_covid, cum_deaths, start_date, end_date):
     time_vector = list(df_covid.index)
-    cumuldies = df_covid['fallecidos']
-    data_muertos = [
+    cumuldeaths = df_covid['fallecidos']
+    data_deaths = [
         {
             'x': time_vector,
-            'y': cumuldies,
+            'y': cumuldeaths,
             'type': 'bar',
-            'name': 'muertos acumulados',
+            'name': 'Fallecidos acumulados',
         }
     ]
-    muertes['data'] = data_muertos
-    return muertes
+    cum_deaths['data'] = data_deaths
+    return cum_deaths
 
 
 def update_matrix(df_covid, df_covid_raw):
