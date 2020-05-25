@@ -58,11 +58,12 @@
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
 .container {
   position: relative;
-  width: 100%;
-  max-width: 700px;
+  width: 90%;
+  /* max-width: 700px; */
   margin: 0 auto;
-  padding: 0 20px;
-  box-sizing: border-box; }
+  /* padding: 0 20px; */
+  box-sizing: border-box;
+}
 .column,
 .columns {
   width: 100%;
@@ -70,15 +71,15 @@
   box-sizing: border-box; }
 
 /* For devices larger than 400px */
-@media (min-width: 400px) {
+/*@media (min-width: 400px) {
   .container {
     width: 85%;
     max-width: 700px;
     padding: 0; }
-}
+}*/
 
 /* For devices larger than 550px */
-@media (min-width: 550px) {
+/*@media (min-width: 550px) {
   .container {
     width: 80%;
     max-width: 700px;
@@ -107,10 +108,10 @@
   .one-third.column               { width: 30.6666666667%; }
   .two-thirds.column              { width: 65.3333333333%; }
 
-  .one-half.column                { width: 48%; }
+  .one-half.column                { width: 48%; }*/
 
   /* Offsets */
-  .offset-by-one.column,
+  /* .offset-by-one.column,
   .offset-by-one.columns          { margin-left: 8.66666666667%; }
   .offset-by-two.column,
   .offset-by-two.columns          { margin-left: 17.3333333333%; }
@@ -141,7 +142,7 @@
   .offset-by-one-half.column,
   .offset-by-one-half.columns     { margin-left: 52%; }
 
-}
+} */
 
 
 /* Base Styles
@@ -150,7 +151,8 @@
 html is set to 62.5% so that all the REM measurements throughout Skeleton
 are based on 10px sizing. So basically 1.5rem = 15px :) */
 html {
-  font-size: 62.5%; }
+  font-size: 62.5%; 
+  background-color: whitesmoke;}
 body {
   font-size: 1.5em; /* currently ems cause chrome bug misinterpreting rems on body element */
   line-height: 1.6;
@@ -413,6 +415,47 @@ hr {
   clear: both; }
 
 
+.pretty_container {
+  border-radius: 5px;
+  background-color: white;
+  margin: 10px;
+  padding: 15px;
+  position: relative;
+  box-shadow: 2px 2px 2px lightgrey;
+}
+
+.control_label {
+  margin: 30px 0px 0px 0px;
+}
+
+.DateRangePickerInput__withBorder{
+  border: 0;
+}
+
+.CalendarDay {
+  padding: 0;
+  border: 1px solid #e4e7e7;
+  color: #484848;
+  background: #fff;
+}
+
+.CalendarDay__selected_span {
+  background: blue;
+  border: 1px double lightseagreen;
+  color: white;
+}
+
+.DayPicker_weekHeader{
+  color: black
+}
+
+.CalendarDay__blocked_out_of_range, .CalendarDay__blocked_out_of_range:active, .CalendarDay__blocked_out_of_range:hover {
+  background: #fff;
+  border: 1px solid #e4e7e7;
+  color: #cacccd;
+}
+
+
 /* Media Queries
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
 /*
@@ -424,16 +467,16 @@ there.
 
 
 /* Larger than mobile */
-@media (min-width: 400px) {}
+/* @media (min-width: 400px) {} */
 
 /* Larger than phablet (also point when grid becomes active) */
-@media (min-width: 550px) {}
+/* @media (min-width: 550px) {} */
 
 /* Larger than tablet */
-@media (min-width: 750px) {}
+/* @media (min-width: 750px) {} */
 
 /* Larger than desktop */
-@media (min-width: 1000px) {}
+/* @media (min-width: 1000px) {} */
 
 /* Larger than Desktop HD */
-@media (min-width: 1200px) {}
+/* @media (min-width: 1200px) {} */
