@@ -127,9 +127,8 @@ app.layout = html.Div([
     className='row',
     style={"display": "flex"},
     ),
-    dcc.Markdown('**IMPORTANTE:** El reporte real de infectados y recuperados a la fecha presenta en promedio un retraso mayor \
-        a 7 días por lo que la interpretación de los valores de Rt para fechas menores a 7 días a partir del día de hoy debe\
-             ser hecha con precaución'),
+    dcc.Markdown('**IMPORTANTE:** El [reporte de infectados y recuperados](https://www.datos.gov.co/Salud-y-Protecci-n-Social/Casos-positivos-de-COVID-19-en-Colombia/gt2j-8ykr/data) \
+        presenta en promedio un retraso mayor a 7 días, por lo que la interpretación de los valores de Rt para la última semana debe ser hecha con precaución.'),
     html.Div([
         html.Div(
             dcc.Graph(
