@@ -111,11 +111,11 @@ app.layout = html.Div([
                             'title': 'Rt',
                             'showgrid': True,
                             'gridcolor': 'whitesmoke',
-                            'zeroline': True,
+                            'rangemode': 'tozero',
                         },
                         'xaxis': {
                             'showgrid': True,
-                            'gridcolor': 'whitesmoke' 
+                            'gridcolor': 'whitesmoke',
                         },
                     }
                 )
@@ -128,82 +128,118 @@ app.layout = html.Div([
     style={"display": "flex"},
     ),
     html.Div([
-        dcc.Graph(
-            id='info_table',
-            figure=go.Figure(
-                go.Table(
-                    cells={
-                        'line_color': 'darkslategray',
-                        'fill_color': ['lightgray', 'white','lightgray', 'white'],
-                        'font_size': 12,
-                        'height': 30
-                    },
-                    header = {
-                        'values': ['Casos', 'Número', 'Infectados', 'Número'],
-                        'line_color': 'darkslategray',
-                        'fill_color': 'gray',
-                        'font': {'color':'white', 'size': 12},
-                        'height': 30
-                    },
+        html.Div(
+            dcc.Graph(
+                id='log_infectados',
+                config=graph_config,
+                figure=go.Figure(
+                    layout={
+                        'height':400,
+                        'legend': {
+                            'orientation': 'h',
+                            "x": 0.5,
+                            'xanchor': 'center'
+                        },
+                        'margin': {'l': 80, 'r': 50, 't': 40},
+                        'hovermode': 'closest',
+                        'plot_bgcolor': 'rgba(0,0,0,0)',
+                        'yaxis': {
+                            'title': 'log(infectados)',
+                            'showgrid': True,
+                            'gridcolor': 'whitesmoke'
+                        },
+                        'xaxis': {
+                            'showgrid': True,
+                            'gridcolor': 'whitesmoke' 
+                        },
+                    }
                 )
+            ),
+            style={'width': '50%'},
+            className='pretty_container',
+        ),        
+        html.Div(
+            dcc.Graph(
+                id='cum_infectados',
+                config=graph_config,
+                figure=go.Figure(
+                    layout={
+                        'height':400,
+                        'legend': {
+                            'orientation': 'h',
+                            "x": 0.5,
+                            'xanchor': 'center'
+                        },
+                        'margin': {'l': 80, 'r': 50, 't': 40},
+                        'hovermode': 'closest',
+                        'plot_bgcolor': 'rgba(0,0,0,0)',
+                        'yaxis': {
+                            'title': 'Infectados acumulados',
+                            'showgrid': True,
+                            'gridcolor': 'whitesmoke'
+                        },
+                        'xaxis': {
+                            'showgrid': True,
+                            'gridcolor': 'whitesmoke'
+                        },
+                    }
+                )
+            ),
+            style={'width': '50%'},
+            className='pretty_container',
+        )
+    ],
+        className='row',
+        style={"display": "flex"},
+    ),
+    dash_table.DataTable(
+        id='days_table',
+    ),
+    dcc.Graph(
+        id='muertes',
+        config=graph_config,
+        figure=go.Figure(
+            layout={
+                'height':400,
+                'legend': {
+                    'orientation': 'h',
+                    "x": 0.5,
+                    'xanchor': 'center'
+                },
+                'margin': {'l': 80, 'r': 50, 't': 40},
+                'hovermode': 'closest',
+                'plot_bgcolor': 'rgba(0,0,0,0)',
+                'yaxis': {
+                    'title': 'muertes',
+                    'showgrid': True,
+                    'gridcolor': 'whitesmoke'
+                },
+                'xaxis': {
+                    'showgrid': True,
+                    'gridcolor': 'whitesmoke' 
+                },
+            }
+        )
+    ),
+    dcc.Graph(
+        id='info_table',
+        figure=go.Figure(
+            go.Table(
+                cells={
+                    'line_color': 'darkslategray',
+                    'fill_color': ['lightgray', 'white','lightgray', 'white'],
+                    'font_size': 12,
+                    'height': 30
+                },
+                header = {
+                    'values': ['Casos', 'Número', 'Infectados', 'Número'],
+                    'line_color': 'darkslategray',
+                    'fill_color': 'gray',
+                    'font': {'color':'white', 'size': 12},
+                    'height': 30
+                },
             )
-        ),
-        dcc.Graph(
-            id='log_infectados',
-            config=graph_config,
-            figure=go.Figure(
-                layout={
-                    'height':400,
-                    'legend': {
-                        'orientation': 'h',
-                        "x": 0.5,
-                        'xanchor': 'center'
-                    },
-                    'margin': {'l': 80, 'r': 50, 't': 40},
-                    'hovermode': 'closest',
-                    'plot_bgcolor': 'rgba(0,0,0,0)',
-                    'yaxis': {
-                        'title': 'log(infectados)',
-                        'showgrid': True,
-                        'gridcolor': 'whitesmoke'
-                    },
-                    'xaxis': {
-                        'showgrid': True,
-                        'gridcolor': 'whitesmoke' 
-                    },
-                }
-            )
-        ),
-        dash_table.DataTable(
-            id='days_table',
-        ),
-        dcc.Graph(
-            id='muertes',
-            config=graph_config,
-            figure=go.Figure(
-                layout={
-                    'height':400,
-                    'legend': {
-                        'orientation': 'h',
-                        "x": 0.5,
-                        'xanchor': 'center'
-                    },
-                    'margin': {'l': 80, 'r': 50, 't': 40},
-                    'hovermode': 'closest',
-                    'plot_bgcolor': 'rgba(0,0,0,0)',
-                    'yaxis': {
-                        'title': 'muertes',
-                        'showgrid': True,
-                        'gridcolor': 'whitesmoke'
-                    },
-                    'xaxis': {
-                        'showgrid': True,
-                        'gridcolor': 'whitesmoke' 
-                    },
-                }
-            )
-        ),
-        ],
+        )
     ),
     dcc.Markdown('Elaborado por:'),
     dcc.Markdown('- Jairo Díaz, División de Ciencias Básicas, Universidad del Norte - Barranquilla'),
@@ -217,11 +253,12 @@ app.layout = html.Div([
 className='container',
 style={"display": "flex", "flex-direction": "column"},
 )
-
+colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
 @app.callback(
     [
         Output('rt_graph', 'figure'),
         Output('log_infectados', 'figure'),
+        Output('cum_infectados', 'figure'),
         Output('info_table', 'figure'),
         Output('days_table', 'columns'),
         Output('days_table', 'data'),
@@ -236,12 +273,13 @@ style={"display": "flex", "flex-direction": "column"},
     [
         State('rt_graph', 'figure'),
         State('log_infectados', 'figure'),
+        State('cum_infectados', 'figure'),
         State('info_table', 'figure'),
         State('muertes', 'figure'),
     ]
 )
 def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, municipio: str=None, \
-    rt_graph=None, log_infectados=None, info_table=None, muertes=None) -> list:
+    rt_graph=None, log_infectados=None, cum_infectados=None, info_table=None, muertes=None) -> list:
     if dpto is None:
         dpto = list()
     if municipio is None:
@@ -254,13 +292,15 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
     # Crea vector de tiempo para graficar
     time_vector = list(df_covid[(start_date <= df_covid.index) & (df_covid.index <= end_date)].index)
 
+    df_covid_filter = df_covid[(start_date <= df_covid.index) & (df_covid.index <= end_date)]
+
     data_rt = [
         {
             'x': time_vector[1:],
             'y': np.zeros(len(time_vector)-1) + 1,
             'hoverinfo': 'none',
             'line': {
-                'color': 'blue',
+                'color': 'red',
                 'width': 1,
                 'dash': 'dash'
             },
@@ -283,25 +323,27 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         datetime(2020, 4, 11),
         datetime(2020, 4, 27),
     ]
-    for location, (df_location, df_covid_location) in covid_dict.items():
-        update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas)
-        update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, estimados=True)
+    for i, (location, (df_location, df_covid_location)) in enumerate(covid_dict.items()):
+        update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, colors[i])
+        update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, colors[i], estimados=True)
 
     return (
-        rt_graph, 
-        update_log(df_covid, log_infectados, start_date, end_date), 
+        rt_graph,
+        *update_infectados(df_covid_filter, log_infectados, cum_infectados, start_date, end_date),
         update_table(df, info_table), 
         *update_matrix(df_covid, df_covid_raw),
-        update_muertes(df_covid, muertes, start_date, end_date),
+        update_muertes(df_covid_filter, muertes, start_date, end_date),
     )
 
-def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, estimados=False):
+def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, color, estimados=False):
     if estimados:
         filt = 'estimados'
         msg = 'ajustado (nowcast)'
+        dash = 'dashdot'
     else:
         filt = 'infectados'
         msg = 'sin ajuste'
+        dash = 'solid'
     
     time_vector = list(df_covid.index)
     d_vector = calculate_days(time_vector[1:], df)
@@ -320,7 +362,14 @@ def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annot
     time_vector = time_vector[start + 1: end + 2]
     rt_filt = rt_filt[start: end + 1]
     
-    data_rt.append({'x': time_vector, 'y': rt_filt, 'mode': 'lines', 'name': f'Rt suavizado {name} ' + msg, 'opacity': 0.8})
+    new_data = {
+        'x': time_vector, 
+        'y': rt_filt, 
+        'mode': 'lines', 
+        'name': f'Rt {name} ' + msg,
+        'line': {'color': color, 'dash': dash},
+    }
+    data_rt.append(new_data)
 
     annotations = list()
     for i, fecha_cuarentena in enumerate(cuarentenas):
@@ -338,34 +387,39 @@ def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annot
     rt_graph['layout']['annotations'] = annotations
 
 
-def update_log(df_covid, log_infectados, start_date, end_date):
-    df_covid = df_covid[(start_date <= df_covid.index) & (df_covid.index <= end_date)]
+def update_infectados(df_covid, log_infectados, cum_infectados, start_date, end_date):
     time_vector = list(df_covid.index)
     cumulcases = df_covid['infectados'] - df_covid['recuperados']
     log_infect = np.log(cumulcases.astype('float64'))
-    data_infectados = [
+    data_log = [
         {
             'x': time_vector,
             'y': log_infect,
             'mode': 'lines',
-            'name': 'log(infectados)',
+            'name': 'Infectados acumulados',
         }
     ]
-    log_infectados['data'] = data_infectados
-    return log_infectados
+    data_cum = [
+        {
+            'x': time_vector,
+            'y': cumulcases,
+            'type': 'bar',
+            'name': 'Infectados acumulados',
+        }
+    ]
+    log_infectados['data'] = data_log
+    cum_infectados['data'] = data_cum
+    return log_infectados, cum_infectados
 
 
 def update_muertes(df_covid, muertes, start_date, end_date):
-    df_covid = df_covid[(start_date <= df_covid.index) & (df_covid.index <= end_date)]
     time_vector = list(df_covid.index)
     cumuldies = df_covid['fallecidos']
-    # log_infect = np.log(cumulcases.astype('float64'))
     data_muertos = [
         {
             'x': time_vector,
             'y': cumuldies,
             'type': 'bar',
-            # 'mode': 'lines',
             'name': 'muertos acumulados',
         }
     ]
