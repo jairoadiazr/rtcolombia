@@ -257,26 +257,26 @@ app.layout = html.Div([
         ),
         className='pretty_container',
     ),
-    dcc.Graph(
-        id='info_table',
-        figure=go.Figure(
-            go.Table(
-                cells={
-                    'line_color': 'darkslategray',
-                    'fill_color': ['lightgray', 'white','lightgray', 'white'],
-                    'font_size': 12,
-                    'height': 30
-                },
-                header = {
-                    'values': ['Casos', 'Número', 'Infectados', 'Número'],
-                    'line_color': 'darkslategray',
-                    'fill_color': 'gray',
-                    'font': {'color':'white', 'size': 12},
-                    'height': 30
-                },
-            )
-        )
-    ),
+    # dcc.Graph(
+    #     id='info_table',
+    #     figure=go.Figure(
+    #         go.Table(
+    #             cells={
+    #                 'line_color': 'darkslategray',
+    #                 'fill_color': ['lightgray', 'white','lightgray', 'white'],
+    #                 'font_size': 12,
+    #                 'height': 30
+    #             },
+    #             header = {
+    #                 'values': ['Casos', 'Número', 'Infectados', 'Número'],
+    #                 'line_color': 'darkslategray',
+    #                 'fill_color': 'gray',
+    #                 'font': {'color':'white', 'size': 12},
+    #                 'height': 30
+    #             },
+    #         )
+    #     )
+    # ),
     dcc.Markdown('Elaborado por:'),
     dcc.Markdown('- Jairo Díaz, División de Ciencias Básicas, Universidad del Norte - Barranquilla'),
     dcc.Markdown('- Jairo Espinosa, Facultad de Minas, Universidad Nacional de Colombia - Medellín'),
@@ -296,7 +296,7 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
         Output('log_infectados', 'figure'),
         Output('daily_infectados', 'figure'),
         Output('cum_infectados', 'figure'),
-        Output('info_table', 'figure'),
+        # Output('info_table', 'figure'),
         Output('days_table', 'columns'),
         Output('days_table', 'data'),
         Output('daily_deaths', 'figure'),
@@ -316,7 +316,7 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
         State('log_infectados', 'figure'),
         State('daily_infectados', 'figure'),
         State('cum_infectados', 'figure'),
-        State('info_table', 'figure'),
+        # State('info_table', 'figure'),
         State('daily_deaths', 'figure'),
         State('cum_deaths', 'figure'),
         State('status_infectados', 'figure'),
@@ -324,7 +324,7 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
 )
 def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, municipio: str=None, \
     rt_graph=None, log_infectados=None, daily_infectados=None, cum_infectados=None, \
-        info_table=None, daily_deaths=None, cum_deaths=None, status_infectados=None) -> list:
+        daily_deaths=None, cum_deaths=None, status_infectados=None) -> list:
     if dpto is None:
         dpto = list()
     if municipio is None:
@@ -379,7 +379,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
     return (
         rt_graph,
         *update_infectados(df_covid_filter, df_covid_raw_filter, log_infectados, daily_infectados, cum_infectados),
-        update_table(df, info_table), 
+        # update_table(df, info_table), 
         *update_matrix(df_covid, df_covid_raw),
         *update_deaths(df_covid_filter, df_covid_raw_filter, daily_deaths, cum_deaths),
         status_infectados,
