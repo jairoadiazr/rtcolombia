@@ -192,8 +192,17 @@ app.layout = html.Div([
         className='row',
         style={"display": "flex"},
     ),
-    dash_table.DataTable(
-        id='days_table',
+    html.Div(
+        dash_table.DataTable(
+            id='days_table',
+            style_as_list_view=True,
+            style_cell={'padding': '5px'},
+            style_header={
+                'backgroundColor': 'white',
+                'fontWeight': 'bold'
+            },
+        ),
+        className='pretty_container'
     ),
     dcc.Graph(
         id='muertes',
@@ -428,8 +437,10 @@ def update_muertes(df_covid, muertes, start_date, end_date):
 
 
 def update_matrix(df_covid, df_covid_raw):
-    data_table = df_covid_raw.merge(df_covid, how='inner', left_index=True, right_index=True).reset_index().rename(columns={'index': 'fecha'}).tail(10).iloc[::-1]
-    columns = [{'name': i, 'id': i} for i in data_table.columns]
+    data_table = df_covid.merge(df_covid_raw, how='inner', left_index=True, right_index=True).reset_index().rename(columns={'index': 'fecha'}).tail(10).iloc[::-1]
+    data_table['fecha'] = data_table['fecha'].dt.date
+    parse_head = lambda x: ' '.join(map(lambda y: y.title(), x.split('_')))
+    columns = [{'name': parse_head(i), 'id': i} for i in data_table.columns]
     data = data_table.to_dict('records')
     return columns, data
 
@@ -492,7 +503,7 @@ def get_dfs(df, start_date):
     # Agrega estimados
     p = delay_probability(df)
     probabilities = [1 / p[day] if day in p else 1 for day in (datetime.now() - df_dates.index).days]
-    df_covid_raw['nuevos_estimados'] = df_covid_raw['nuevos_infectados'] * probabilities
+    df_covid_raw['nuevos_estimados'] = (df_covid_raw['nuevos_infectados'] * probabilities).apply(lambda x: round(x))
     # Crea DataFrame con los infectados acumulados hasta la fecha
     rename_dict = {
         'nuevos_infectados': 'infectados', 
