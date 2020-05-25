@@ -46,7 +46,7 @@ graph_config = {
         'hoverCompareCartesian',
         'zoomOut2d', 'zoomIn2d',
         'hoverClosestCartesian',
-        'resetScale2d'
+        'resetScale2d', 'lasso2d',
     ]
 }
 
