@@ -50,6 +50,25 @@ graph_config = {
     ]
 }
 
+layout_graph = {
+    'legend': {
+        'orientation': 'h',
+        'x': 0.5,
+        'xanchor': 'center'
+    },
+    'margin': {'t': 40, 'r': 40, 'l': 40, 'b': 60},
+    'hovermode': 'closest',
+    'plot_bgcolor': '#fff',
+    'yaxis': {
+        'showgrid': True,
+        'gridcolor': 'whitesmoke'
+    },
+    'xaxis': {
+        'showgrid': True,
+        'gridcolor': 'whitesmoke' 
+    },
+}
+
 app.layout = html.Div([
     html.H1(
         'COVID19 Colombia',
@@ -122,27 +141,7 @@ app.layout = html.Div([
                     id='rt_graph',
                     config=graph_config,
                     figure=go.Figure(
-                        layout={
-                            'legend': {
-                                'orientation': 'h',
-                                'x': 0.5,
-                                'xanchor': 'center'
-                            },
-                            'title': {'text': ''},
-                            'margin': {'t': 40, 'r': 40, 'l': 40, 'b': 60},
-                            'hovermode': 'closest',
-                            'plot_bgcolor': '#fff',
-                            'yaxis': {
-                                'title': 'Rt',
-                                'showgrid': True,
-                                'gridcolor': 'whitesmoke',
-                                'rangemode': 'tozero',
-                            },
-                            'xaxis': {
-                                'showgrid': True,
-                                'gridcolor': 'whitesmoke',
-                            },
-                        }
+                        layout=layout_graph,
                     )
                 ),
                 className='pretty_container',
@@ -162,25 +161,7 @@ app.layout = html.Div([
                 id='log_infectados',
                 config=graph_config,
                 figure=go.Figure(
-                    layout={
-                        'legend': {
-                            'orientation': 'h',
-                            'x': 0.5,
-                            'xanchor': 'center'
-                        },
-                        'margin': {'t': 40, 'r': 40, 'l': 40, 'b': 60},
-                        'hovermode': 'closest',
-                        'plot_bgcolor': '#fff',
-                        'yaxis': {
-                            'title': 'log(Infectados activos)',
-                            'showgrid': True,
-                            'gridcolor': 'whitesmoke'
-                        },
-                        'xaxis': {
-                            'showgrid': True,
-                            'gridcolor': 'whitesmoke' 
-                        },
-                    }
+                    layout=layout_graph
                 )
             ),
             style={'width': '50%'},
@@ -191,26 +172,7 @@ app.layout = html.Div([
                 id='daily_infectados',
                 config=graph_config,
                 figure=go.Figure(
-                    layout={
-                        'legend': {
-                            'orientation': 'h',
-                            'x': 0.5,
-                            'xanchor': 'center'
-                        },
-                        'margin': {'t': 40, 'r': 40, 'l': 40, 'b': 60},
-                        'hovermode': 'closest',
-                        'plot_bgcolor': '#fff',
-                        'yaxis': {
-                            'title': 'Infectados diarios',
-                            'showgrid': True,
-                            'gridcolor': 'whitesmoke'
-                        },
-                        'xaxis': {
-                            'showgrid': True,
-                            'gridcolor': 'whitesmoke'
-                        },
-                        'barmode': 'stack',
-                    }
+                    layout=layout_graph,
                 )
             ),
             style={'width': '50%'},
@@ -237,25 +199,7 @@ app.layout = html.Div([
             id='cum_deaths',
             config=graph_config,
             figure=go.Figure(
-                layout={
-                    'legend': {
-                        'orientation': 'h',
-                        'x': 0.5,
-                        'xanchor': 'center'
-                    },
-                    'margin': {'t': 40, 'r': 40, 'l': 40, 'b': 60},
-                    'hovermode': 'closest',
-                    'plot_bgcolor': '#fff',
-                    'yaxis': {
-                        'title': 'Fallecidos acumulados',
-                        'showgrid': True,
-                        'gridcolor': 'whitesmoke'
-                    },
-                    'xaxis': {
-                        'showgrid': True,
-                        'gridcolor': 'whitesmoke'
-                    },
-                }
+                layout=layout_graph,
             )
         ),
         className='pretty_container',
@@ -423,7 +367,7 @@ def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annot
         annotations.append(new_dict)
 
     rt_graph['data'] = data_rt
-    # rt_graph['layout']['title']['text'] = f'Tiempo medio de recuperación: {round(d_vector[-1], 2)} días'
+    rt_graph['layout']['yaxis']['title'] = 'Rt'
     rt_graph['layout']['annotations'] = annotations
 
 
@@ -462,7 +406,10 @@ def update_infectados(df_covid, df_covid_raw, log_infectados, daily_infectados, 
         }
     ]
     log_infectados['data'] = data_log
+    log_infectados['layout']['yaxis']['title'] = 'log(Infectados activos)'
     daily_infectados['data'] = data_cum
+    daily_infectados['layout']['yaxis']['title'] = 'Infectados diarios'
+    daily_infectados['layout']['barmode'] = 'stack'    
     return log_infectados, daily_infectados
 
 
@@ -478,6 +425,7 @@ def update_deaths(df_covid, cum_deaths, start_date, end_date):
         }
     ]
     cum_deaths['data'] = data_deaths
+    cum_deaths['layout']['yaxis']['title'] = 'Fallecidos acumulados'
     return cum_deaths
 
 
