@@ -155,18 +155,7 @@ app.layout = html.Div([
     ),
     dcc.Markdown('**IMPORTANTE:** El [reporte de infectados y recuperados](https://www.datos.gov.co/Salud-y-Protecci-n-Social/Casos-positivos-de-COVID-19-en-Colombia/gt2j-8ykr/data) \
         presenta en promedio un retraso mayor a 7 días, por lo que la interpretación de los valores de Rt para la última semana debe ser hecha con precaución.'),
-    html.Div([
-        html.Div(
-            dcc.Graph(
-                id='log_infectados',
-                config=graph_config,
-                figure=go.Figure(
-                    layout=layout_graph
-                )
-            ),
-            style={'width': '50%'},
-            className='pretty_container',
-        ),        
+    html.Div([    
         html.Div(
             dcc.Graph(
                 id='daily_infectados',
@@ -177,7 +166,18 @@ app.layout = html.Div([
             ),
             style={'width': '50%'},
             className='pretty_container',
-        )
+        ),
+        html.Div(
+            dcc.Graph(
+                id='daily_deaths',
+                config=graph_config,
+                figure=go.Figure(
+                    layout=layout_graph,
+                )
+            ),
+            style={'width': '50%'},
+            className='pretty_container',
+        ),
     ],
         className='row',
         style={'display': 'flex'},
@@ -204,6 +204,17 @@ app.layout = html.Div([
         ),
         className='pretty_container',
     ),
+    html.Div(
+            dcc.Graph(
+                id='log_infectados',
+                config=graph_config,
+                figure=go.Figure(
+                    layout=layout_graph
+                )
+            ),
+            # style={'width': '50%'},
+            # className='pretty_container',
+        ),
     dcc.Graph(
         id='info_table',
         figure=go.Figure(
@@ -245,6 +256,7 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
         Output('info_table', 'figure'),
         Output('days_table', 'columns'),
         Output('days_table', 'data'),
+        Output('daily_deaths', 'figure'),
         Output('cum_deaths', 'figure'),
     ],
     [
@@ -258,11 +270,12 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
         State('log_infectados', 'figure'),
         State('daily_infectados', 'figure'),
         State('info_table', 'figure'),
+        State('daily_deaths', 'figure'),
         State('cum_deaths', 'figure'),
     ]
 )
 def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, municipio: str=None, \
-    rt_graph=None, log_infectados=None, daily_infectados=None, info_table=None, cum_deaths=None) -> list:
+    rt_graph=None, log_infectados=None, daily_infectados=None, info_table=None, daily_deaths=None, cum_deaths=None) -> list:
     if dpto is None:
         dpto = list()
     if municipio is None:
@@ -316,7 +329,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         *update_infectados(df_covid_filter, df_covid_raw_filter, log_infectados, daily_infectados, start_date, end_date),
         update_table(df, info_table), 
         *update_matrix(df_covid, df_covid_raw),
-        update_deaths(df_covid_filter, cum_deaths, start_date, end_date),
+        *update_deaths(df_covid_filter, df_covid_raw_filter, daily_deaths, cum_deaths, start_date, end_date),
     )
 
 def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, color, estimados=False):
@@ -413,20 +426,29 @@ def update_infectados(df_covid, df_covid_raw, log_infectados, daily_infectados, 
     return log_infectados, daily_infectados
 
 
-def update_deaths(df_covid, cum_deaths, start_date, end_date):
+def update_deaths(df_covid, df_covid_raw, daily_deaths, cum_deaths, start_date, end_date):
     time_vector = list(df_covid.index)
-    cumuldeaths = df_covid['fallecidos']
-    data_deaths = [
+    data_cum = [
         {
             'x': time_vector,
-            'y': cumuldeaths,
+            'y': df_covid['fallecidos'],
             'type': 'bar',
             'name': 'Fallecidos acumulados',
         }
     ]
-    cum_deaths['data'] = data_deaths
+    data_daily = [
+        {
+            'x': time_vector,
+            'y': df_covid_raw['nuevos_fallecidos'],
+            'type': 'bar',
+            'name': 'Fallecidos acumulados',
+        }
+    ]
+    cum_deaths['data'] = data_cum
     cum_deaths['layout']['yaxis']['title'] = 'Fallecidos acumulados'
-    return cum_deaths
+    daily_deaths['data'] = data_daily
+    daily_deaths['layout']['yaxis']['title'] = 'Fallecidos diarios'
+    return daily_deaths, cum_deaths
 
 
 def update_matrix(df_covid, df_covid_raw):
