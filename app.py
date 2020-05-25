@@ -72,13 +72,13 @@ layout_graph = {
 
 app.layout = html.Div([
     html.H1(
-        'COVID19 Colombia',
-        className='title', #TODO
+        'COVID-19 Colombia',
+        className='title', #TODO:
         style={'text-align': 'center'}
     ),
     html.H3(
         'Cálculo de Rt en tiempo real',
-        className='subtitle', #TODO
+        className='subtitle', #TODO:
         style={'text-align': 'center'}
     ),
     html.Div([
