@@ -50,166 +50,179 @@ graph_config = {
     ]
 }
 
-app.layout = html.Div(
-    [
-        html.H1(
-            children='COVID19 Colombia',
-            style={'text-align': 'center'}
-        ),
-        html.H3(
-            children='Cálculo de Rt en tiempo real',
-            style={'text-align': 'center'}
-        ),
-        html.H6(
-            [
-                html.Label('Departamento o distrito especial'),
-                dcc.Dropdown(
-                    id='departamento',
-                    options=[{'label': dpto, 'value': dpto} for dpto in np.sort(covid_data['departamento'].unique())],
-                    placeholder='Seleccione un departamento o distrito especial',
-                    multi=True,
-                ),
-                html.Label('Municipio'),
-                dcc.Dropdown(
-                    id='municipio',
-                    options=[{'label': city, 'value': city} for city in np.sort(covid_data['municipio'].unique())],
-                    placeholder='Seleccione un municipio',
-                    multi=True,
-                ),
-                html.Label('Filtro de fecha'),
-                dcc.DatePickerRange(
-                    id='fecha',
-                    min_date_allowed=covid_data['fecha_sintomas'].min(),
-                    max_date_allowed=current_date,
-                    initial_visible_month=current_date,
-                    end_date=current_date,
-                    start_date=current_date - timedelta(days=30)
-                )
-            ]
+app.layout = html.Div([
+    html.H1(
+        'COVID19 Colombia',
+        className='title', #TODO
+        style={'text-align': 'center'}
+    ),
+    html.H3(
+        'Cálculo de Rt en tiempo real',
+        className='subtitle', #TODO
+        style={'text-align': 'center'}
+    ),
+    html.Div([
+        html.Div([
+            html.P('Seleccione un rango de fechas', className='control_label'),
+            dcc.DatePickerRange(
+                id='fecha',
+                min_date_allowed=covid_data['fecha_sintomas'].min(),
+                max_date_allowed=current_date,
+                initial_visible_month=current_date,
+                end_date=current_date,
+                start_date=current_date - timedelta(days=30),
+                display_format='DD-MMM-YYYY',
+                first_day_of_week=1,
+            ),
+            html.P('Filtro por departamentos', className='control_label'),
+            dcc.Dropdown(
+                id='departamento',
+                options=[{'label': dpto, 'value': dpto} for dpto in np.sort(covid_data['departamento'].unique())],
+                placeholder='Buscar departamento o D. E.',
+                multi=True,
+            ),
+            html.P('Filtro por ciudades', className='control_label'),
+            dcc.Dropdown(
+                id='municipio',
+                options=[{'label': city, 'value': city} for city in np.sort(covid_data['municipio'].unique())],
+                placeholder='Buscar ciudad o municipio',
+                multi=True,
+            ),
+            ],
+            style={'width': '25%'},
+            className='pretty_container',
         ),
         html.Div(
-            [
-                dcc.Graph(
-                    id='rt_graph',
-                    config=graph_config,
-                    figure=go.Figure(
-                        layout={
-                            'legend': {
-                                'orientation': 'h',
-                                "x": 0.5,
-                                'xanchor': 'center'
-                            },
-                            'title': {'text': ''},
-                            'margin': {'l': 80, 'r': 50, 't': 40},
-                            'hovermode': 'closest',
-                            'plot_bgcolor': 'rgba(0,0,0,0)',
-                            'yaxis': {
-                                'title': 'Rt',
-                                'showgrid': True,
-                                'gridcolor': 'whitesmoke'
-                            },
-                            'xaxis': {
-                                'showgrid': True,
-                                'gridcolor': 'whitesmoke' 
-                            },
-                        }
-                    )
-                ),
-                html.Label('La información de este estimado no es confiable la última semana'),
-                dcc.Graph(
-                    id='table-fig',
-                    figure=go.Figure(
-                        go.Table(
-                            cells={
-                                'line_color': 'darkslategray',
-                                'fill_color': ['lightgray', 'white','lightgray', 'white'],
-                                'font_size': 12,
-                                'height': 30
-                            },
-                            header = {
-                                'values': ['Casos', 'Número', 'Infectados', 'Número'],
-                                'line_color': 'darkslategray',
-                                'fill_color': 'gray',
-                                'font': {'color':'white', 'size': 12},
-                                'height': 30
-                            },
-                        )
-                    )
-                ),
-                dcc.Graph(
-                    id='log_infectados',
-                    config=graph_config,
-                    figure=go.Figure(
-                        layout={
-                            'height':400,
-                            'legend': {
-                                'orientation': 'h',
-                                "x": 0.5,
-                                'xanchor': 'center'
-                            },
-                            'margin': {'l': 80, 'r': 50, 't': 40},
-                            'hovermode': 'closest',
-                            'plot_bgcolor': 'rgba(0,0,0,0)',
-                            'yaxis': {
-                                'title': 'log(infectados)',
-                                'showgrid': True,
-                                'gridcolor': 'whitesmoke'
-                            },
-                            'xaxis': {
-                                'showgrid': True,
-                                'gridcolor': 'whitesmoke' 
-                            },
-                        }
-                    )
-                ),
-                dash_table.DataTable(
-                    id='days_table',
-                ),
-                dcc.Graph(
-                    id='muertes',
-                    config=graph_config,
-                    figure=go.Figure(
-                        layout={
-                            'height':400,
-                            'legend': {
-                                'orientation': 'h',
-                                "x": 0.5,
-                                'xanchor': 'center'
-                            },
-                            'margin': {'l': 80, 'r': 50, 't': 40},
-                            'hovermode': 'closest',
-                            'plot_bgcolor': 'rgba(0,0,0,0)',
-                            'yaxis': {
-                                'title': 'muertes',
-                                'showgrid': True,
-                                'gridcolor': 'whitesmoke'
-                            },
-                            'xaxis': {
-                                'showgrid': True,
-                                'gridcolor': 'whitesmoke' 
-                            },
-                        }
-                    )
-                ),
-            ],
+            dcc.Graph(
+                id='rt_graph',
+                config=graph_config,
+                figure=go.Figure(
+                    layout={
+                        'legend': {
+                            'orientation': 'h',
+                            "x": 0.5,
+                            'xanchor': 'center'
+                        },
+                        'title': {'text': ''},
+                        # 'margin': {'l': 80, 'r': 50, 't': 40},
+                        'hovermode': 'closest',
+                        'plot_bgcolor': 'rgba(0,0,0,0)',
+                        'yaxis': {
+                            'title': 'Rt',
+                            'showgrid': True,
+                            'gridcolor': 'whitesmoke',
+                            'zeroline': True,
+                        },
+                        'xaxis': {
+                            'showgrid': True,
+                            'gridcolor': 'whitesmoke' 
+                        },
+                    }
+                )
+            ),
+            style={'width': '75%'},
+            className='pretty_container',
         ),
-            dcc.Markdown('Elaborado por:'),
-            dcc.Markdown('- Jairo Díaz, División de Ciencias Básicas, Universidad del Norte - Barranquilla'),
-            dcc.Markdown('- Jairo Espinosa, Facultad de Minas, Universidad Nacional de Colombia - Medellín'),
-            dcc.Markdown('- Héctor López'),
-            dcc.Markdown('- Bernardo Uribe, División de Ciencias Básicas, Universidad del Norte - Barranquilla'),
-            dcc.Markdown('La información completa de este proyecto se puede consultar en :'),
-            dcc.Markdown('https://sites.google.com/site/bernardouribejongbloed/home/RtColombia'),
-            dcc.Markdown('Sociedad Colombiana de Matemáticas')
     ],
-className='container'
+    className='row',
+    style={"display": "flex"},
+    ),
+    html.Div([
+        dcc.Graph(
+            id='info_table',
+            figure=go.Figure(
+                go.Table(
+                    cells={
+                        'line_color': 'darkslategray',
+                        'fill_color': ['lightgray', 'white','lightgray', 'white'],
+                        'font_size': 12,
+                        'height': 30
+                    },
+                    header = {
+                        'values': ['Casos', 'Número', 'Infectados', 'Número'],
+                        'line_color': 'darkslategray',
+                        'fill_color': 'gray',
+                        'font': {'color':'white', 'size': 12},
+                        'height': 30
+                    },
+                )
+            )
+        ),
+        dcc.Graph(
+            id='log_infectados',
+            config=graph_config,
+            figure=go.Figure(
+                layout={
+                    'height':400,
+                    'legend': {
+                        'orientation': 'h',
+                        "x": 0.5,
+                        'xanchor': 'center'
+                    },
+                    'margin': {'l': 80, 'r': 50, 't': 40},
+                    'hovermode': 'closest',
+                    'plot_bgcolor': 'rgba(0,0,0,0)',
+                    'yaxis': {
+                        'title': 'log(infectados)',
+                        'showgrid': True,
+                        'gridcolor': 'whitesmoke'
+                    },
+                    'xaxis': {
+                        'showgrid': True,
+                        'gridcolor': 'whitesmoke' 
+                    },
+                }
+            )
+        ),
+        dash_table.DataTable(
+            id='days_table',
+        ),
+        dcc.Graph(
+            id='muertes',
+            config=graph_config,
+            figure=go.Figure(
+                layout={
+                    'height':400,
+                    'legend': {
+                        'orientation': 'h',
+                        "x": 0.5,
+                        'xanchor': 'center'
+                    },
+                    'margin': {'l': 80, 'r': 50, 't': 40},
+                    'hovermode': 'closest',
+                    'plot_bgcolor': 'rgba(0,0,0,0)',
+                    'yaxis': {
+                        'title': 'muertes',
+                        'showgrid': True,
+                        'gridcolor': 'whitesmoke'
+                    },
+                    'xaxis': {
+                        'showgrid': True,
+                        'gridcolor': 'whitesmoke' 
+                    },
+                }
+            )
+        ),
+        ],
+    ),
+    dcc.Markdown('Elaborado por:'),
+    dcc.Markdown('- Jairo Díaz, División de Ciencias Básicas, Universidad del Norte - Barranquilla'),
+    dcc.Markdown('- Jairo Espinosa, Facultad de Minas, Universidad Nacional de Colombia - Medellín'),
+    dcc.Markdown('- Héctor López'),
+    dcc.Markdown('- Bernardo Uribe, División de Ciencias Básicas, Universidad del Norte - Barranquilla'),
+    dcc.Markdown('La información completa de este proyecto se puede consultar en :'),
+    dcc.Markdown('https://sites.google.com/site/bernardouribejongbloed/home/RtColombia'),
+    dcc.Markdown('Sociedad Colombiana de Matemáticas'),
+    ],
+className='container',
+style={"display": "flex", "flex-direction": "column"},
 )
 
 @app.callback(
     [
         Output('rt_graph', 'figure'),
         Output('log_infectados', 'figure'),
-        Output('table-fig', 'figure'),
+        Output('info_table', 'figure'),
         Output('days_table', 'columns'),
         Output('days_table', 'data'),
         Output('muertes', 'figure'),
@@ -223,12 +236,12 @@ className='container'
     [
         State('rt_graph', 'figure'),
         State('log_infectados', 'figure'),
-        State('table-fig', 'figure'),
+        State('info_table', 'figure'),
         State('muertes', 'figure'),
     ]
 )
 def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, municipio: str=None, \
-    rt_graph=None, log_infectados=None, table_fig=None, muertes=None) -> list:
+    rt_graph=None, log_infectados=None, info_table=None, muertes=None) -> list:
     if dpto is None:
         dpto = list()
     if municipio is None:
@@ -251,6 +264,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
                 'width': 1,
                 'dash': 'dash'
             },
+            'showlegend': False,
         }
     ]
 
@@ -276,7 +290,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
     return (
         rt_graph, 
         update_log(df_covid, log_infectados, start_date, end_date), 
-        update_table(df, table_fig), 
+        update_table(df, info_table), 
         *update_matrix(df_covid, df_covid_raw),
         update_muertes(df_covid, muertes, start_date, end_date),
     )
@@ -306,7 +320,7 @@ def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annot
     time_vector = time_vector[start + 1: end + 2]
     rt_filt = rt_filt[start: end + 1]
     
-    data_rt.append({'x': time_vector, 'y': rt_filt, 'mode': 'lines', 'name': f'Rt suavizado {name} ' + msg,})
+    data_rt.append({'x': time_vector, 'y': rt_filt, 'mode': 'lines', 'name': f'Rt suavizado {name} ' + msg, 'opacity': 0.8})
 
     annotations = list()
     for i, fecha_cuarentena in enumerate(cuarentenas):
@@ -366,7 +380,7 @@ def update_matrix(df_covid, df_covid_raw):
     return columns, data
 
 
-def update_table(df, table_fig):
+def update_table(df, info_table):
     # Actualiza tabla
     positivos = df.shape[0]
     importados = df[df['tipo_contagio'] == 'Importado'].shape[0]
@@ -383,8 +397,8 @@ def update_table(df, table_fig):
         list(map(thousand_sep, [activos, casa, hosp, uci]))
     ]
 
-    table_fig['data'][0]['cells']['values'] = table_values
-    return table_fig
+    info_table['data'][0]['cells']['values'] = table_values
+    return info_table
 
 
 def calculate_days(time_vector, df):
