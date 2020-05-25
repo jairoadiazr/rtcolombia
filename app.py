@@ -92,40 +92,67 @@ app.layout = html.Div([
             style={'width': '25%'},
             className='pretty_container',
         ),
-        html.Div(
-            dcc.Graph(
-                id='rt_graph',
-                config=graph_config,
-                figure=go.Figure(
-                    layout={
-                        'legend': {
-                            'orientation': 'h',
-                            "x": 0.5,
-                            'xanchor': 'center'
-                        },
-                        'title': {'text': ''},
-                        # 'margin': {'l': 80, 'r': 50, 't': 40},
-                        'hovermode': 'closest',
-                        'plot_bgcolor': 'rgba(0,0,0,0)',
-                        'yaxis': {
-                            'title': 'Rt',
-                            'showgrid': True,
-                            'gridcolor': 'whitesmoke',
-                            'rangemode': 'tozero',
-                        },
-                        'xaxis': {
-                            'showgrid': True,
-                            'gridcolor': 'whitesmoke',
-                        },
-                    }
-                )
+        html.Div([
+            html.Div([
+                html.Div(
+                    dcc.Markdown(f'Tiempo medio de infecciosidad: {d_hat}'),
+                    style={'width': '25%'},
+                    className='pretty_container',
+                ),
+                html.Div(
+                    dcc.Markdown(f'Tiempo medio de retraso en el reporte: {w_hat}'),
+                    style={'width': '25%'},
+                    className='pretty_container',
+                ),
+                html.Div(
+                    dcc.Markdown(f'Infectados activos: {100}'),
+                    style={'width': '25%'},
+                    className='pretty_container',
+                ),
+                html.Div(
+                    dcc.Markdown(f'Fallecidos: {1}'),
+                    style={'width': '25%'},
+                    className='pretty_container',
+                ),
+        ],
+        style={'display': 'flex', 'flex-direction': 'row'},
+        ),
+            html.Div(
+                dcc.Graph(
+                    id='rt_graph',
+                    config=graph_config,
+                    figure=go.Figure(
+                        layout={
+                            'legend': {
+                                'orientation': 'h',
+                                'x': 0.5,
+                                'xanchor': 'center'
+                            },
+                            'title': {'text': ''},
+                            # 'margin': {'l': 80, 'r': 50, 't': 40},
+                            'hovermode': 'closest',
+                            'plot_bgcolor': 'rgba(0,0,0,0)',
+                            'yaxis': {
+                                'title': 'Rt',
+                                'showgrid': True,
+                                'gridcolor': 'whitesmoke',
+                                'rangemode': 'tozero',
+                            },
+                            'xaxis': {
+                                'showgrid': True,
+                                'gridcolor': 'whitesmoke',
+                            },
+                        }
+                    )
+                ),
+                className='pretty_container',
             ),
+        ],
             style={'width': '75%'},
-            className='pretty_container',
         ),
     ],
     className='row',
-    style={"display": "flex"},
+    style={'display': 'flex'},
     ),
     dcc.Markdown('**IMPORTANTE:** El [reporte de infectados y recuperados](https://www.datos.gov.co/Salud-y-Protecci-n-Social/Casos-positivos-de-COVID-19-en-Colombia/gt2j-8ykr/data) \
         presenta en promedio un retraso mayor a 7 días, por lo que la interpretación de los valores de Rt para la última semana debe ser hecha con precaución.'),
@@ -139,7 +166,7 @@ app.layout = html.Div([
                         'height':400,
                         'legend': {
                             'orientation': 'h',
-                            "x": 0.5,
+                            'x': 0.5,
                             'xanchor': 'center'
                         },
                         'margin': {'l': 80, 'r': 50, 't': 40},
@@ -169,7 +196,7 @@ app.layout = html.Div([
                         'height':400,
                         'legend': {
                             'orientation': 'h',
-                            "x": 0.5,
+                            'x': 0.5,
                             'xanchor': 'center'
                         },
                         'margin': {'l': 80, 'r': 50, 't': 40},
@@ -193,7 +220,7 @@ app.layout = html.Div([
         )
     ],
         className='row',
-        style={"display": "flex"},
+        style={'display': 'flex'},
     ),
     html.Div(
         dash_table.DataTable(
@@ -216,7 +243,7 @@ app.layout = html.Div([
                     'height':400,
                     'legend': {
                         'orientation': 'h',
-                        "x": 0.5,
+                        'x': 0.5,
                         'xanchor': 'center'
                     },
                     'margin': {'l': 80, 'r': 50, 't': 40},
@@ -266,7 +293,7 @@ app.layout = html.Div([
     dcc.Markdown('Sociedad Colombiana de Matemáticas'),
     ],
 className='container',
-style={"display": "flex", "flex-direction": "column"},
+style={'display': 'flex', 'flex-direction': 'column'},
 )
 colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
 @app.callback(
@@ -399,7 +426,7 @@ def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annot
         annotations.append(new_dict)
 
     rt_graph['data'] = data_rt
-    rt_graph['layout']['title']['text'] = f'Tiempo medio de recuperación: {round(d_vector[-1], 2)} días'
+    # rt_graph['layout']['title']['text'] = f'Tiempo medio de recuperación: {round(d_vector[-1], 2)} días'
     rt_graph['layout']['annotations'] = annotations
 
 
