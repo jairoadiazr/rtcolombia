@@ -182,6 +182,33 @@ app.layout = html.Div([
         className='row',
         style={'display': 'flex'},
     ),
+    html.Div([    
+        html.Div(
+            dcc.Graph(
+                id='cum_infectados',
+                config=graph_config,
+                figure=go.Figure(
+                    layout=layout_graph,
+                )
+            ),
+            style={'width': '50%'},
+            className='pretty_container',
+        ),
+        html.Div(
+            dcc.Graph(
+                id='cum_deaths',
+                config=graph_config,
+                figure=go.Figure(
+                    layout=layout_graph,
+                )
+            ),
+            style={'width': '50%'},
+            className='pretty_container',
+        ),
+    ],
+        className='row',
+        style={'display': 'flex'},
+    ),
     html.Div(
         dash_table.DataTable(
             id='days_table',
@@ -191,16 +218,6 @@ app.layout = html.Div([
                 'backgroundColor': 'white',
                 'fontWeight': 'bold'
             },
-        ),
-        className='pretty_container',
-    ),
-    html.Div(
-        dcc.Graph(
-            id='cum_deaths',
-            config=graph_config,
-            figure=go.Figure(
-                layout=layout_graph,
-            )
         ),
         className='pretty_container',
     ),
