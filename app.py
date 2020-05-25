@@ -12,6 +12,7 @@ import scipy.signal as sgnl
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from copy import deepcopy
+from collections import defaultdict
 
 # Clase CovidData
 from covid import CovidData
@@ -35,8 +36,7 @@ w_hat = cd.w_hat
 def thousand_sep(n: int) -> str:
     return f'{n:,}'
 
-external_stylesheets = ['https://cdn.rawgit.com/gschivley/8040fc3c7e11d2a4e7f0589ffc829a02/raw/fe763af6be3fc79eca341b04cd641124de6f6f0d/dash.css']
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+app = dash.Dash(__name__)
 app.title = 'Rt Colombia'
 server = app.server
 
@@ -47,146 +47,263 @@ graph_config = {
         'hoverCompareCartesian',
         'zoomOut2d', 'zoomIn2d',
         'hoverClosestCartesian',
-        'resetScale2d'
+        'resetScale2d', 'lasso2d',
     ]
 }
 
-app.layout = html.Div(
-    [
-        html.H1(
-            children='COVID19 Colombia',
-            style={'text-align': 'center'}
+layout_graph = {
+    'legend': {
+        'orientation': 'h',
+        'x': 0.5,
+        'xanchor': 'center'
+    },
+    'margin': {'t': 40, 'r': 40, 'l': 40, 'b': 60},
+    'hovermode': 'closest',
+    'plot_bgcolor': '#fff',
+    'yaxis': {
+        'showgrid': True,
+        'gridcolor': 'whitesmoke'
+    },
+    'xaxis': {
+        'showgrid': True,
+        'gridcolor': 'whitesmoke' 
+    },
+}
+
+app.layout = html.Div([
+    html.H1(
+        'COVID-19 Colombia',
+        className='title', #TODO:
+        style={'text-align': 'center'}
+    ),
+    html.H3(
+        'Cálculo de Rt en tiempo real',
+        className='subtitle', #TODO:
+        style={'text-align': 'center'}
+    ),
+    html.Div([
+        html.Div([
+            html.P('Seleccione un rango de fechas', className='control_label'),
+            dcc.DatePickerRange(
+                id='fecha',
+                min_date_allowed=covid_data['fecha_sintomas'].min(),
+                max_date_allowed=current_date,
+                initial_visible_month=current_date,
+                end_date=current_date,
+                start_date=current_date - timedelta(days=30),
+                display_format='DD-MMM-YYYY',
+                first_day_of_week=1,
+            ),
+            html.P('Filtro por departamentos', className='control_label'),
+            dcc.Dropdown(
+                id='departamento',
+                options=[{'label': dpto, 'value': dpto} for dpto in np.sort(covid_data['departamento'].unique())],
+                placeholder='Buscar departamento o D. E.',
+                multi=True,
+            ),
+            html.P('Filtro por ciudades', className='control_label'),
+            dcc.Dropdown(
+                id='municipio',
+                options=[{'label': city, 'value': city} for city in np.sort(covid_data['municipio'].unique())],
+                placeholder='Buscar ciudad o municipio',
+                multi=True,
+            ),
+            ],
+            style={'width': '25%'},
+            className='pretty_container',
         ),
-        html.H3(
-            children='Cálculo de Rt en tiempo real',
-            style={'text-align': 'center'}
+        html.Div([
+            html.Div([
+                html.Div([
+                    html.P(d_hat, className='data_value'),
+                    html.P('Media de días infectado', className='data_info'),
+                ],
+                    style={'width': '25%'},
+                    className='pretty_container',
+                ),
+                html.Div([
+                    html.P(w_hat, className='data_value'),
+                    html.P('Media de retraso reporte', className='data_info')
+                ],
+                    style={'width': '25%'},
+                    className='pretty_container',
+                ),
+                html.Div([
+                    html.P(0, id='num_inf', className='data_value'),
+                    html.P('Infectados activos', className='data_info'),
+                ],
+                    style={'width': '25%'},
+                    className='pretty_container',
+                ),
+                html.Div([
+                    html.P(0, id='num_rec', className='data_value'),
+                    html.P('Recuperados o fallecidos', className='data_info')
+                ],
+                    style={'width': '25%'},
+                    className='pretty_container',
+                ),
+        ],
+        style={'display': 'flex', 'flex-direction': 'row'},
         ),
-        html.H6(
-            [
-                html.Label('Departamento o distrito especial'),
-                dcc.Dropdown(
-                    id='departamento',
-                    options=[{'label': dpto, 'value': dpto} for dpto in np.sort(covid_data['departamento'].unique())],
-                    placeholder='Seleccione un departamento o distrito especial',
-                    multi=True,
+            html.Div(
+                dcc.Graph(
+                    id='rt_graph',
+                    config=graph_config,
+                    figure=go.Figure(
+                        layout=layout_graph,
+                    )
                 ),
-                html.Label('Municipio'),
-                dcc.Dropdown(
-                    id='municipio',
-                    options=[{'label': city, 'value': city} for city in np.sort(covid_data['municipio'].unique())],
-                    placeholder='Seleccione un municipio',
-                    multi=True,
-                ),
-                html.Label('Filtro de fecha'),
-                dcc.DatePickerRange(
-                    id='fecha',
-                    min_date_allowed=covid_data['fecha_sintomas'].min(),
-                    max_date_allowed=current_date,
-                    initial_visible_month=current_date,
-                    end_date=current_date,
-                    start_date=current_date - timedelta(days=30)
+                className='pretty_container',
+            ),
+        ],
+            style={'width': '75%'},
+        ),
+    ],
+    className='row',
+    style={'display': 'flex'},
+    ),
+    dcc.Markdown('**IMPORTANTE:** El [reporte de infectados y recuperados](https://www.datos.gov.co/Salud-y-Protecci-n-Social/Casos-positivos-de-COVID-19-en-Colombia/gt2j-8ykr/data) \
+        presenta en promedio un retraso mayor a 7 días, por lo que la interpretación de los valores de Rt para la última semana debe ser hecha con precaución.'),
+    html.Div([    
+        html.Div(
+            dcc.Graph(
+                id='daily_infectados',
+                config=graph_config,
+                figure=go.Figure(
+                    layout=layout_graph,
                 )
-            ]
+            ),
+            style={'width': '50%'},
+            className='pretty_container',
         ),
         html.Div(
-            [
-                dcc.Graph(
-                    id='rt-graph',
-                    config=graph_config,
-                    figure=go.Figure(
-                        layout={
-                            'legend': {
-                                'orientation': 'h',
-                                "x": 0.5,
-                                'xanchor': 'center'
-                            },
-                            'title': {'text': ''},
-                            'margin': {'l': 80, 'r': 50, 't': 40},
-                            'hovermode': 'closest',
-                            'plot_bgcolor': 'rgba(0,0,0,0)',
-                            'yaxis': {
-                                'title': 'Rt',
-                                'showgrid': True,
-                                'gridcolor': 'whitesmoke'
-                            },
-                            'xaxis': {
-                                'showgrid': True,
-                                'gridcolor': 'whitesmoke' 
-                            },
-                        }
-                    )
-                ),
-                html.Label('La información de este estimado no es confiable la última semana'),
-                dcc.Graph(
-                    id='table-fig',
-                    figure=go.Figure(
-                        go.Table(
-                            cells={
-                                'line_color': 'darkslategray',
-                                'fill_color': ['lightgray', 'white','lightgray', 'white'],
-                                'font_size': 12,
-                                'height': 30
-                            },
-                            header = {
-                                'values': ['Casos', 'Número', 'Infectados', 'Número'],
-                                'line_color': 'darkslategray',
-                                'fill_color': 'gray',
-                                'font': {'color':'white', 'size': 12},
-                                'height': 30
-                            },
-                        )
-                    )
-                ),
-                dcc.Graph(
-                    id='log_infectados',
-                    config=graph_config,
-                    figure=go.Figure(
-                        layout={
-                            'height':400,
-                            'legend': {
-                                'orientation': 'h',
-                                "x": 0.5,
-                                'xanchor': 'center'
-                            },
-                            'margin': {'l': 80, 'r': 50, 't': 40},
-                            'hovermode': 'closest',
-                            'plot_bgcolor': 'rgba(0,0,0,0)',
-                            'yaxis': {
-                                'title': 'log(infectados)',
-                                'showgrid': True,
-                                'gridcolor': 'whitesmoke'
-                            },
-                            'xaxis': {
-                                'showgrid': True,
-                                'gridcolor': 'whitesmoke' 
-                            },
-                        }
-                    )
-                ),
-                dash_table.DataTable(
-                    id='days_table',
+            dcc.Graph(
+                id='daily_deaths',
+                config=graph_config,
+                figure=go.Figure(
+                    layout=layout_graph,
                 )
-            ],
+            ),
+            style={'width': '50%'},
+            className='pretty_container',
         ),
-            dcc.Markdown('Elaborado por:'),
-            dcc.Markdown('- Jairo Díaz, División de Ciencias Básicas, Universidad del Norte - Barranquilla'),
-            dcc.Markdown('- Jairo Espinosa, Facultad de Minas, Universidad Nacional de Colombia - Medellín'),
-            dcc.Markdown('- Héctor López'),
-            dcc.Markdown('- Bernardo Uribe, División de Ciencias Básicas, Universidad del Norte - Barranquilla'),
-            dcc.Markdown('La información completa de este proyecto se puede consultar en :'),
-            dcc.Markdown('https://sites.google.com/site/bernardouribejongbloed/home/RtColombia'),
-            dcc.Markdown('Sociedad Colombiana de Matemáticas')
     ],
-className='container'
+        className='row',
+        style={'display': 'flex'},
+    ),
+    html.Div([    
+        html.Div(
+            dcc.Graph(
+                id='cum_infectados',
+                config=graph_config,
+                figure=go.Figure(
+                    layout=layout_graph,
+                )
+            ),
+            style={'width': '50%'},
+            className='pretty_container',
+        ),
+        html.Div(
+            dcc.Graph(
+                id='cum_deaths',
+                config=graph_config,
+                figure=go.Figure(
+                    layout=layout_graph,
+                )
+            ),
+            style={'width': '50%'},
+            className='pretty_container',
+        ),
+    ],
+        className='row',
+        style={'display': 'flex'},
+    ),
+    html.Div([
+        html.Div(
+            dcc.Graph(
+                id='log_infectados',
+                config=graph_config,
+                figure=go.Figure(
+                    layout=layout_graph
+                )
+            ),
+            style={'width': '50%'},
+            className='pretty_container',
+        ),
+        html.Div(
+            dcc.Graph(
+                id='status_infectados',
+                config=graph_config,
+                figure=go.Figure(
+                    layout=layout_graph
+                )
+            ),
+            style={'width': '50%'},
+            className='pretty_container',
+        ),
+    ],
+        className='row',
+        style={'display': 'flex'},
+    ),
+    html.Div(
+        dash_table.DataTable(
+            id='days_table',
+            style_as_list_view=True,
+            style_cell={'padding': '5px'},
+            style_header={
+                'backgroundColor': 'white',
+                'fontWeight': 'bold'
+            },
+        ),
+        className='pretty_container',
+    ),
+    # dcc.Graph(
+    #     id='info_table',
+    #     figure=go.Figure(
+    #         go.Table(
+    #             cells={
+    #                 'line_color': 'darkslategray',
+    #                 'fill_color': ['lightgray', 'white','lightgray', 'white'],
+    #                 'font_size': 12,
+    #                 'height': 30
+    #             },
+    #             header = {
+    #                 'values': ['Casos', 'Número', 'Infectados', 'Número'],
+    #                 'line_color': 'darkslategray',
+    #                 'fill_color': 'gray',
+    #                 'font': {'color':'white', 'size': 12},
+    #                 'height': 30
+    #             },
+    #         )
+    #     )
+    # ),
+    dcc.Markdown('Elaborado por:'),
+    dcc.Markdown('- Jairo Díaz, División de Ciencias Básicas, Universidad del Norte - Barranquilla'),
+    dcc.Markdown('- Jairo Espinosa, Facultad de Minas, Universidad Nacional de Colombia - Medellín'),
+    dcc.Markdown('- Héctor López'),
+    dcc.Markdown('- Bernardo Uribe, División de Ciencias Básicas, Universidad del Norte - Barranquilla'),
+    dcc.Markdown('La información completa de este proyecto se puede consultar en :'),
+    dcc.Markdown('https://sites.google.com/site/bernardouribejongbloed/home/RtColombia'),
+    dcc.Markdown('Sociedad Colombiana de Matemáticas'),
+    ],
+className='container',
+style={'display': 'flex', 'flex-direction': 'column'},
 )
-
+colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
 @app.callback(
     [
-        Output('rt-graph', 'figure'),
+        Output('rt_graph', 'figure'),
         Output('log_infectados', 'figure'),
-        Output('table-fig', 'figure'),
+        Output('daily_infectados', 'figure'),
+        Output('cum_infectados', 'figure'),
+        # Output('info_table', 'figure'),
         Output('days_table', 'columns'),
-        Output('days_table', 'data')
+        Output('days_table', 'data'),
+        Output('daily_deaths', 'figure'),
+        Output('cum_deaths', 'figure'),
+        Output('status_infectados', 'figure'),
+        Output('num_inf', 'children'),
+        Output('num_rec', 'children'),
     ],
     [
         Input('fecha', 'start_date'),
@@ -195,12 +312,19 @@ className='container'
         Input('municipio', 'value'),
     ],
     [
-        State('rt-graph', 'figure'),
+        State('rt_graph', 'figure'),
         State('log_infectados', 'figure'),
-        State('table-fig', 'figure'),
+        State('daily_infectados', 'figure'),
+        State('cum_infectados', 'figure'),
+        # State('info_table', 'figure'),
+        State('daily_deaths', 'figure'),
+        State('cum_deaths', 'figure'),
+        State('status_infectados', 'figure'),
     ]
 )
-def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, municipio: str=None, rt_graph=None, log_infectados=None, table_fig=None) -> list:
+def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, municipio: str=None, \
+    rt_graph=None, log_infectados=None, daily_infectados=None, cum_infectados=None, \
+        daily_deaths=None, cum_deaths=None, status_infectados=None) -> list:
     if dpto is None:
         dpto = list()
     if municipio is None:
@@ -213,16 +337,20 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
     # Crea vector de tiempo para graficar
     time_vector = list(df_covid[(start_date <= df_covid.index) & (df_covid.index <= end_date)].index)
 
+    df_covid_filter = df_covid[(start_date <= df_covid.index) & (df_covid.index <= end_date)]
+    df_covid_raw_filter = df_covid_raw[(start_date <= df_covid.index) & (df_covid.index <= end_date)]
+
     data_rt = [
         {
             'x': time_vector[1:],
             'y': np.zeros(len(time_vector)-1) + 1,
             'hoverinfo': 'none',
             'line': {
-                'color': 'blue',
+                'color': 'red',
                 'width': 1,
                 'dash': 'dash'
             },
+            'showlegend': False,
         }
     ]
 
@@ -241,24 +369,33 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         datetime(2020, 4, 11),
         datetime(2020, 4, 27),
     ]
-    for location, (df_location, df_covid_location) in covid_dict.items():
-        update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas)
-        update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, estimados=True)
-
+    # Update Rt
+    for i, (location, (df_location, df_covid_location)) in enumerate(covid_dict.items()):
+        update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, colors[i])
+        update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, colors[i], estimados=True)
+    
+    update_status(covid_dict, status_infectados)
+    
     return (
-        rt_graph, 
-        update_log(df_covid, log_infectados, start_date, end_date), 
-        update_table(df, table_fig), 
-        *update_matrix(df_covid, df_covid_raw)
+        rt_graph,
+        *update_infectados(df_covid_filter, df_covid_raw_filter, log_infectados, daily_infectados, cum_infectados),
+        # update_table(df, info_table), 
+        *update_matrix(df_covid, df_covid_raw),
+        *update_deaths(df_covid_filter, df_covid_raw_filter, daily_deaths, cum_deaths),
+        status_infectados,
+        thousand_sep(int(df_covid.loc[end_date, 'infectados'])),
+        thousand_sep(int(df_covid.loc[end_date, 'recuperados'])),
     )
 
-def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, estimados=False):
+def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, color, estimados=False):
     if estimados:
         filt = 'estimados'
         msg = 'ajustado (nowcast)'
+        dash = 'dashdot'
     else:
         filt = 'infectados'
         msg = 'sin ajuste'
+        dash = 'solid'
     
     time_vector = list(df_covid.index)
     d_vector = calculate_days(time_vector[1:], df)
@@ -277,7 +414,14 @@ def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annot
     time_vector = time_vector[start + 1: end + 2]
     rt_filt = rt_filt[start: end + 1]
     
-    data_rt.append({'x': time_vector, 'y': rt_filt, 'mode': 'lines', 'name': f'Rt suavizado {name} ' + msg,})
+    new_data = {
+        'x': time_vector, 
+        'y': rt_filt, 
+        'mode': 'lines', 
+        'name': f'Rt {name} ' + msg,
+        'line': {'color': color, 'dash': dash},
+    }
+    data_rt.append(new_data)
 
     annotations = list()
     for i, fecha_cuarentena in enumerate(cuarentenas):
@@ -291,35 +435,139 @@ def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annot
         annotations.append(new_dict)
 
     rt_graph['data'] = data_rt
-    rt_graph['layout']['title']['text'] = f'Tiempo medio de recuperación: {round(d_vector[-1], 2)} días'
+    rt_graph['layout']['yaxis']['title'] = 'Rt'
     rt_graph['layout']['annotations'] = annotations
 
 
-def update_log(df_covid, log_infectados, start_date, end_date):
-    df_covid = df_covid[(start_date <= df_covid.index) & (df_covid.index <= end_date)]
+def update_infectados(df_covid, df_covid_raw, log_infectados, daily_infectados, cum_infectados):
     time_vector = list(df_covid.index)
-    cumulcases = df_covid['infectados'] - df_covid['recuperados']
+
+    infectados = df_covid_raw['nuevos_infectados'] 
+    estimados = df_covid_raw['nuevos_estimados']
+
+    infectados_cum = df_covid['infectados'] 
+    estimados_cum = df_covid['estimados']
+    recuperados_cum = df_covid['recuperados']
+
+    cumulcases = infectados_cum - recuperados_cum 
+    estimate_cumulcases = estimados_cum - recuperados_cum
+    
     log_infect = np.log(cumulcases.astype('float64'))
-    data_infectados = [
+    log_estim = np.log(estimate_cumulcases.astype('float64'))
+    data_log = [
         {
             'x': time_vector,
             'y': log_infect,
             'mode': 'lines',
-            'name': 'log(infectados)',
+            'name': 'Activos',
+        },
+        {
+            'x': time_vector,
+            'y': log_estim,
+            'mode': 'lines',
+            'name': 'Estimados',
         }
     ]
-    log_infectados['data'] = data_infectados
-    return log_infectados
+    log_infectados['data'] = data_log
+    log_infectados['layout']['yaxis']['title'] = 'log(Infectados activos)'
+    
+    data_daily = [
+        {
+            'x': time_vector,
+            'y': infectados,
+            'type': 'bar',
+            'name': 'Infectados reportados',
+        },
+        {
+            'x': time_vector,
+            'y': estimados - infectados,
+            'type': 'bar',
+            'name': 'Estimados',
+        }
+    ]
+    daily_infectados['data'] = data_daily
+    daily_infectados['layout']['yaxis']['title'] = 'Infectados diarios'
+    daily_infectados['layout']['barmode'] = 'stack'
+
+    data_cum = [
+        {
+            'x': time_vector,
+            'y': infectados_cum,
+            'type': 'bar',
+            'name': 'Infectados reportados',
+        },
+        {
+            'x': time_vector,
+            'y': estimados_cum - infectados_cum,
+            'type': 'bar',
+            'name': 'Estimados',
+        }
+    ]
+    cum_infectados['data'] = data_cum
+    cum_infectados['layout']['yaxis']['title'] = 'Infectados acumulados'
+    cum_infectados['layout']['barmode'] = 'stack'
+    return log_infectados, daily_infectados, cum_infectados
+
+
+def update_deaths(df_covid, df_covid_raw, daily_deaths, cum_deaths):
+    time_vector = list(df_covid.index)
+    data_cum = [
+        {
+            'x': time_vector,
+            'y': df_covid['fallecidos'],
+            'type': 'bar',
+            'name': 'Fallecidos acumulados',
+        }
+    ]
+    data_daily = [
+        {
+            'x': time_vector,
+            'y': df_covid_raw['nuevos_fallecidos'],
+            'type': 'bar',
+            'name': 'Fallecidos acumulados',
+        }
+    ]
+    cum_deaths['data'] = data_cum
+    cum_deaths['layout']['yaxis']['title'] = 'Fallecidos acumulados'
+    daily_deaths['data'] = data_daily
+    daily_deaths['layout']['yaxis']['title'] = 'Fallecidos diarios'
+    return daily_deaths, cum_deaths
+
+
+def update_status(covid_dict, status_infectados):
+    locations = list(covid_dict.keys())
+    options = ['Hospital', 'Hospital Uci', 'Recuperado', 'Fallecido']
+    y = defaultdict(list)
+    for location in locations:
+        df = covid_dict[location][0]
+        df = df.groupby('atencion').count()[['id']]
+        for option in options:
+            y[option].append(df.loc[option, 'id'])
+
+    data = [
+        {
+            'x': locations,
+            'y': y[option],
+            'type': 'bar',
+            'name': option,
+        } for option in options
+    ]
+    status_infectados['data'] = data
+
 
 
 def update_matrix(df_covid, df_covid_raw):
-    data_table = df_covid_raw.merge(df_covid, how='inner', left_index=True, right_index=True).reset_index().rename(columns={'index': 'fecha'}).tail(10).iloc[::-1]
-    columns = [{'name': i, 'id': i} for i in data_table.columns]
+    data_table = df_covid.merge(df_covid_raw, how='inner', left_index=True, right_index=True).reset_index().rename(columns={'index': 'fecha'}).tail(10).iloc[::-1]
+    data_table['fecha'] = data_table['fecha'].dt.date
+    data_table['recuperados'] = data_table['recuperados'] - data_table['fallecidos']
+    data_table['nuevos_recuperados'] = data_table['nuevos_recuperados'] - data_table['nuevos_fallecidos']
+    parse_head = lambda x: ' '.join(map(lambda y: y.title(), x.split('_')))
+    columns = [{'name': parse_head(i), 'id': i} for i in data_table.columns]
     data = data_table.to_dict('records')
     return columns, data
 
 
-def update_table(df, table_fig):
+def update_table(df, info_table):
     # Actualiza tabla
     positivos = df.shape[0]
     importados = df[df['tipo_contagio'] == 'Importado'].shape[0]
@@ -336,8 +584,8 @@ def update_table(df, table_fig):
         list(map(thousand_sep, [activos, casa, hosp, uci]))
     ]
 
-    table_fig['data'][0]['cells']['values'] = table_values
-    return table_fig
+    info_table['data'][0]['cells']['values'] = table_values
+    return info_table
 
 
 def calculate_days(time_vector, df):
@@ -377,7 +625,7 @@ def get_dfs(df, start_date):
     # Agrega estimados
     p = delay_probability(df)
     probabilities = [1 / p[day] if day in p else 1 for day in (datetime.now() - df_dates.index).days]
-    df_covid_raw['nuevos_estimados'] = df_covid_raw['nuevos_infectados'] * probabilities
+    df_covid_raw['nuevos_estimados'] = (df_covid_raw['nuevos_infectados'] * probabilities).apply(lambda x: round(x))
     # Crea DataFrame con los infectados acumulados hasta la fecha
     rename_dict = {
         'nuevos_infectados': 'infectados', 
