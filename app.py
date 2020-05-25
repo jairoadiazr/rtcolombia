@@ -270,6 +270,7 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
         Output('rt_graph', 'figure'),
         Output('log_infectados', 'figure'),
         Output('daily_infectados', 'figure'),
+        Output('cum_infectados', 'figure'),
         Output('info_table', 'figure'),
         Output('days_table', 'columns'),
         Output('days_table', 'data'),
@@ -286,13 +287,15 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
         State('rt_graph', 'figure'),
         State('log_infectados', 'figure'),
         State('daily_infectados', 'figure'),
+        State('cum_infectados', 'figure'),
         State('info_table', 'figure'),
         State('daily_deaths', 'figure'),
         State('cum_deaths', 'figure'),
     ]
 )
 def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, municipio: str=None, \
-    rt_graph=None, log_infectados=None, daily_infectados=None, info_table=None, daily_deaths=None, cum_deaths=None) -> list:
+    rt_graph=None, log_infectados=None, daily_infectados=None, cum_infectados=None, \
+        info_table=None, daily_deaths=None, cum_deaths=None) -> list:
     if dpto is None:
         dpto = list()
     if municipio is None:
@@ -343,10 +346,10 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
 
     return (
         rt_graph,
-        *update_infectados(df_covid_filter, df_covid_raw_filter, log_infectados, daily_infectados, start_date, end_date),
+        *update_infectados(df_covid_filter, df_covid_raw_filter, log_infectados, daily_infectados, cum_infectados),
         update_table(df, info_table), 
         *update_matrix(df_covid, df_covid_raw),
-        *update_deaths(df_covid_filter, df_covid_raw_filter, daily_deaths, cum_deaths, start_date, end_date),
+        *update_deaths(df_covid_filter, df_covid_raw_filter, daily_deaths, cum_deaths),
     )
 
 def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, color, estimados=False):
@@ -401,10 +404,19 @@ def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annot
     rt_graph['layout']['annotations'] = annotations
 
 
-def update_infectados(df_covid, df_covid_raw, log_infectados, daily_infectados, start_date, end_date):
+def update_infectados(df_covid, df_covid_raw, log_infectados, daily_infectados, cum_infectados):
     time_vector = list(df_covid.index)
-    cumulcases = df_covid['infectados'] - df_covid['recuperados']
-    estimate_cumulcases = df_covid['estimados'] - df_covid['recuperados']
+
+    infectados = df_covid_raw['nuevos_infectados'] 
+    estimados = df_covid_raw['nuevos_estimados']
+
+    infectados_cum = df_covid['infectados'] 
+    estimados_cum = df_covid['estimados']
+    recuperados_cum = df_covid['recuperados']
+
+    cumulcases = infectados_cum - recuperados_cum 
+    estimate_cumulcases = estimados_cum - recuperados_cum
+    
     log_infect = np.log(cumulcases.astype('float64'))
     log_estim = np.log(estimate_cumulcases.astype('float64'))
     data_log = [
@@ -421,29 +433,48 @@ def update_infectados(df_covid, df_covid_raw, log_infectados, daily_infectados, 
             'name': 'Estimados',
         }
     ]
-    data_cum = [
+    log_infectados['data'] = data_log
+    log_infectados['layout']['yaxis']['title'] = 'log(Infectados activos)'
+    
+    data_daily = [
         {
             'x': time_vector,
-            'y': df_covid_raw['nuevos_infectados'],
+            'y': infectados,
             'type': 'bar',
             'name': 'Infectados reportados',
         },
         {
             'x': time_vector,
-            'y': df_covid_raw['nuevos_estimados'] - df_covid_raw['nuevos_infectados'],
+            'y': estimados - infectados,
             'type': 'bar',
             'name': 'Estimados',
         }
     ]
-    log_infectados['data'] = data_log
-    log_infectados['layout']['yaxis']['title'] = 'log(Infectados activos)'
-    daily_infectados['data'] = data_cum
+    daily_infectados['data'] = data_daily
     daily_infectados['layout']['yaxis']['title'] = 'Infectados diarios'
-    daily_infectados['layout']['barmode'] = 'stack'    
-    return log_infectados, daily_infectados
+    daily_infectados['layout']['barmode'] = 'stack'
+
+    data_cum = [
+        {
+            'x': time_vector,
+            'y': infectados_cum,
+            'type': 'bar',
+            'name': 'Infectados reportados',
+        },
+        {
+            'x': time_vector,
+            'y': estimados_cum - infectados_cum,
+            'type': 'bar',
+            'name': 'Estimados',
+        }
+    ]
+    cum_infectados['data'] = data_cum
+    cum_infectados['layout']['yaxis']['title'] = 'Infectados acumulados'
+    cum_infectados['layout']['barmode'] = 'stack'    
+    return log_infectados, daily_infectados, cum_infectados
 
 
-def update_deaths(df_covid, df_covid_raw, daily_deaths, cum_deaths, start_date, end_date):
+def update_deaths(df_covid, df_covid_raw, daily_deaths, cum_deaths):
     time_vector = list(df_covid.index)
     data_cum = [
         {
