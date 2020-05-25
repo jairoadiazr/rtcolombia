@@ -12,6 +12,7 @@ import scipy.signal as sgnl
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from copy import deepcopy
+from collections import defaultdict
 
 # Clase CovidData
 from covid import CovidData
@@ -209,6 +210,33 @@ app.layout = html.Div([
         className='row',
         style={'display': 'flex'},
     ),
+    html.Div([
+        html.Div(
+            dcc.Graph(
+                id='log_infectados',
+                config=graph_config,
+                figure=go.Figure(
+                    layout=layout_graph
+                )
+            ),
+            style={'width': '50%'},
+            className='pretty_container',
+        ),
+        html.Div(
+            dcc.Graph(
+                id='status_infectados',
+                config=graph_config,
+                figure=go.Figure(
+                    layout=layout_graph
+                )
+            ),
+            style={'width': '50%'},
+            className='pretty_container',
+        ),
+    ],
+        className='row',
+        style={'display': 'flex'},
+    ),
     html.Div(
         dash_table.DataTable(
             id='days_table',
@@ -221,17 +249,6 @@ app.layout = html.Div([
         ),
         className='pretty_container',
     ),
-    html.Div(
-            dcc.Graph(
-                id='log_infectados',
-                config=graph_config,
-                figure=go.Figure(
-                    layout=layout_graph
-                )
-            ),
-            # style={'width': '50%'},
-            # className='pretty_container',
-        ),
     dcc.Graph(
         id='info_table',
         figure=go.Figure(
@@ -276,6 +293,7 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
         Output('days_table', 'data'),
         Output('daily_deaths', 'figure'),
         Output('cum_deaths', 'figure'),
+        Output('status_infectados', 'figure'),
     ],
     [
         Input('fecha', 'start_date'),
@@ -291,11 +309,12 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
         State('info_table', 'figure'),
         State('daily_deaths', 'figure'),
         State('cum_deaths', 'figure'),
+        State('status_infectados', 'figure'),
     ]
 )
 def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, municipio: str=None, \
     rt_graph=None, log_infectados=None, daily_infectados=None, cum_infectados=None, \
-        info_table=None, daily_deaths=None, cum_deaths=None) -> list:
+        info_table=None, daily_deaths=None, cum_deaths=None, status_infectados=None) -> list:
     if dpto is None:
         dpto = list()
     if municipio is None:
@@ -340,16 +359,20 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         datetime(2020, 4, 11),
         datetime(2020, 4, 27),
     ]
+    # Update Rt
     for i, (location, (df_location, df_covid_location)) in enumerate(covid_dict.items()):
         update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, colors[i])
         update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, colors[i], estimados=True)
-
+    
+    update_status(covid_dict, status_infectados)
+    
     return (
         rt_graph,
         *update_infectados(df_covid_filter, df_covid_raw_filter, log_infectados, daily_infectados, cum_infectados),
         update_table(df, info_table), 
         *update_matrix(df_covid, df_covid_raw),
         *update_deaths(df_covid_filter, df_covid_raw_filter, daily_deaths, cum_deaths),
+        status_infectados,
     )
 
 def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, color, estimados=False):
@@ -470,7 +493,7 @@ def update_infectados(df_covid, df_covid_raw, log_infectados, daily_infectados, 
     ]
     cum_infectados['data'] = data_cum
     cum_infectados['layout']['yaxis']['title'] = 'Infectados acumulados'
-    cum_infectados['layout']['barmode'] = 'stack'    
+    cum_infectados['layout']['barmode'] = 'stack'
     return log_infectados, daily_infectados, cum_infectados
 
 
@@ -497,6 +520,28 @@ def update_deaths(df_covid, df_covid_raw, daily_deaths, cum_deaths):
     daily_deaths['data'] = data_daily
     daily_deaths['layout']['yaxis']['title'] = 'Fallecidos diarios'
     return daily_deaths, cum_deaths
+
+
+def update_status(covid_dict, status_infectados):
+    locations = list(covid_dict.keys())
+    options = ['Hospital', 'Hospital Uci', 'Recuperado', 'Fallecido']
+    y = defaultdict(list)
+    for location in locations:
+        df = covid_dict[location][0]
+        df = df.groupby('atencion').count()[['id']]
+        for option in options:
+            y[option].append(df.loc[option, 'id'])
+
+    data = [
+        {
+            'x': locations,
+            'y': y[option],
+            'type': 'bar',
+            'name': option,
+        } for option in options
+    ]
+    status_infectados['data'] = data
+
 
 
 def update_matrix(df_covid, df_covid_raw):
