@@ -383,8 +383,8 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         *update_matrix(df_covid, df_covid_raw),
         *update_deaths(df_covid_filter, df_covid_raw_filter, daily_deaths, cum_deaths),
         status_infectados,
-        thousand_sep(df_covid.loc[end_date, 'infectados']),
-        thousand_sep(df_covid.loc[end_date, 'recuperados']),
+        thousand_sep(int(df_covid.loc[end_date, 'infectados'])),
+        thousand_sep(int(df_covid.loc[end_date, 'recuperados'])),
     )
 
 def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, color, estimados=False):
