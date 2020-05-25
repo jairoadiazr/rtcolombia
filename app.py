@@ -414,13 +414,13 @@ def update_infectados(df_covid, df_covid_raw, log_infectados, daily_infectados, 
             'x': time_vector,
             'y': log_infect,
             'mode': 'lines',
-            'name': 'Infectados acumulados',
+            'name': 'Activos',
         },
         {
             'x': time_vector,
             'y': log_estim,
             'mode': 'lines',
-            'name': 'Estimados acumulados',
+            'name': 'Estimados',
         }
     ]
     data_cum = [
