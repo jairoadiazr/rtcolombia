@@ -36,7 +36,8 @@ w_hat = cd.w_hat
 def thousand_sep(n: int) -> str:
     return f'{n:,}'
 
-app = dash.Dash(__name__)
+mathjax = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-MML-AM_CHTML'
+app = dash.Dash(__name__, external_scripts=[mathjax])
 app.title = 'Rt Colombia'
 server = app.server
 
@@ -71,14 +72,12 @@ layout_graph = {
 }
 
 app.layout = html.Div([
-    html.H1(
-        'COVID-19 Colombia',
-        className='title', #TODO:
-        style={'text-align': 'center'}
+    html.H2(
+        dcc.Markdown('COVID-19 Colombia: cálculo de $ R_{t} $ en tiempo real'),
+        className='title',
     ),
-    html.H3(
-        'Cálculo de Rt en tiempo real',
-        className='subtitle', #TODO:
+    html.H6(
+        dcc.Markdown(f'Haga click [aquí](rtcolombiaalpha.herokuapp.com) para visitar la versión anterior de esta aplicación'),
         style={'text-align': 'center'}
     ),
     html.Div([
@@ -546,7 +545,10 @@ def update_status(covid_dict, status_infectados):
         df = covid_dict[location][0]
         df = df.groupby('atencion').count()[['id']]
         for option in options:
-            y[option].append(df.loc[option, 'id'])
+            try:
+                y[option].append(df.loc[option, 'id'])
+            except KeyError:
+                y[option].append(0)
 
     data = [
         {
@@ -667,4 +669,4 @@ def calculate_variables(locations, start_date):
     return df, df_covid, df_covid_raw, covid_dict
 
 if __name__ == '__main__':
-    app.run_server(debug=True, host='0.0.0.0')
+    app.run_server(debug=True)
