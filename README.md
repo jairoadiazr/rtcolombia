@@ -1,23 +1,21 @@
-# R_T COLOMBIA COVID-19
-En esta página presentamos una estimación del número básico de reproducción temporal R_t de la epidemia del virus SARS-CoV-2 en Colombia, sus departamentos y sus distritos especiales.
+# Rt COLOMBIA COVID-19
 
-El número básico de reproducción temporal de una epidemia viral R_t lo definimos como el número promedio de personas que contagia una persona infectada promedio en el lapso de tiempo que permaneció infecciosa.
+En este reporte presentamos una estimación del número básico de reproducción temporal *Rt* de la epidemia del virus SARS-CoV-2 en Colombia, sus departamentos y municipios.
 
-Si R_t es mayor que 1 la epidemia crece en número de infectados. Si R_t es menor que 1 la epidemia decrece.
+El número básico de reproducción temporal de una epidemia viral *Rt* lo definimos como el número promedio de personas que contagia una persona infectada en el lapso de tiempo que permaneció infecciosa.
 
-#### Datos en tiempo real provenientes de:
+Si *Rt* es mayor que 1 la epidemia crece en número de infectados. Si *Rt* es menor que 1 la epidemia decrece.
 
-Reportes COVID-19 COLOMBIA: Instituto Nacional de Salud
-https://www.datos.gov.co/Salud-y-Protecci-n-Social/Casos-positivos-de-COVID-19-en-Colombia/gt2j-8ykr/data 
+[**Datos en tiempo real**](
+https://www.datos.gov.co/Salud-y-Protecci-n-Social/Casos-positivos-de-COVID-19-en-Colombia/gt2j-8ykr/data) 
 
 ## Tablero de visualización
 
-La última implementación del tablero está disponible en
-https://rtcolombia.herokuapp.com/
+Ver [aquí](http://rtcolombia.com/) la última implementación del tablero.
 
 ## Documentación
 
-El documento que contextualiza y explica el modelo se puede consultar en
+El documento que contextualiza y explica el modelo se puede consultar en:
 https://drive.google.com/open?id=1g7Xn7JQ9SorXAxauiDdxjDFs7-PI0XBc
 
 ## Autores
