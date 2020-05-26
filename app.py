@@ -77,7 +77,7 @@ app.layout = html.Div([
         className='title',
     ),
     html.H6(
-        dcc.Markdown(f'Haga click [aquí](rtcolombiaalpha.herokuapp.com) para visitar la versión anterior de esta aplicación'),
+        dcc.Markdown(f'Haga click [aquí](https://rtcolombiaalpha.herokuapp.com) para visitar la versión anterior de esta aplicación'),
         style={'text-align': 'center'}
     ),
     html.Div([
@@ -282,7 +282,7 @@ app.layout = html.Div([
     dcc.Markdown('- Héctor López'),
     dcc.Markdown('- Bernardo Uribe, División de Ciencias Básicas, Universidad del Norte - Barranquilla'),
     dcc.Markdown('La información completa de este proyecto se puede consultar en :'),
-    dcc.Markdown('https://sites.google.com/site/bernardouribejongbloed/home/RtColombia'),
+    dcc.Markdown('https://www.rtcolombia.com'),
     dcc.Markdown('Sociedad Colombiana de Matemáticas'),
     ],
 className='container',
@@ -369,6 +369,8 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         datetime(2020, 3, 25),
         datetime(2020, 4, 11),
         datetime(2020, 4, 27),
+        datetime(2020, 5, 11),
+        datetime(2020, 6, 1),
     ]
     # Update Rt
     for i, (location, (df_location, df_covid_location)) in enumerate(covid_dict.items()):
