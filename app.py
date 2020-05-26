@@ -36,7 +36,8 @@ w_hat = cd.w_hat
 def thousand_sep(n: int) -> str:
     return f'{n:,}'
 
-app = dash.Dash(__name__)
+mathjax = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-MML-AM_CHTML'
+app = dash.Dash(__name__, external_scripts=[mathjax])
 app.title = 'Rt Colombia'
 server = app.server
 
@@ -71,20 +72,12 @@ layout_graph = {
 }
 
 app.layout = html.Div([
-    html.H1(
-        'COVID-19 Colombia',
-        className='title', #TODO:
-        style={'text-align': 'center'}
+    html.H2(
+        dcc.Markdown('COVID-19 Colombia: cálculo de $ R_{t} $ en tiempo real'),
+        className='title',
     ),
-    html.H3(
-        'Cálculo de Rt en tiempo real',
-        className='subtitle', #TODO:
-        style={'text-align': 'center'}
-    ),
-    html.H6([
+    html.H6(
         dcc.Markdown(f'Haga click [aquí](rtcolombiaalpha.herokuapp.com) para visitar la versión anterior de esta aplicación'),
-        ],
-        className='subtitle', #TODO:
         style={'text-align': 'center'}
     ),
     html.Div([
