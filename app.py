@@ -545,7 +545,10 @@ def update_status(covid_dict, status_infectados):
         df = covid_dict[location][0]
         df = df.groupby('atencion').count()[['id']]
         for option in options:
-            y[option].append(df.loc[option, 'id'])
+            try:
+                y[option].append(df.loc[option, 'id'])
+            except KeyError:
+                y[option].append(0)
 
     data = [
         {
