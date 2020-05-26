@@ -81,6 +81,12 @@ app.layout = html.Div([
         className='subtitle', #TODO:
         style={'text-align': 'center'}
     ),
+    html.H6([
+        dcc.Markdown(f'Haga click [aquí](rtcolombiaalpha.herokuapp.com) para visitar la versión anterior de esta aplicación'),
+        ],
+        className='subtitle', #TODO:
+        style={'text-align': 'center'}
+    ),
     html.Div([
         html.Div([
             html.P('Seleccione un rango de fechas', className='control_label'),
@@ -667,4 +673,4 @@ def calculate_variables(locations, start_date):
     return df, df_covid, df_covid_raw, covid_dict
 
 if __name__ == '__main__':
-    app.run_server(debug=True, host='0.0.0.0')
+    app.run_server(debug=True)
