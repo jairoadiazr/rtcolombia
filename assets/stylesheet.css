@@ -264,7 +264,7 @@ input[type="button"].button-primary:focus {
 input[type="email"],
 input[type="number"],
 input[type="search"],
-input[type="text"],
+/* input[type="text"], */
 input[type="tel"],
 input[type="url"],
 input[type="password"],
@@ -416,16 +416,19 @@ hr {
 
 
 .pretty_container {
-  border-radius: 5px;
+  border-radius: 15px;
   background-color: white;
   margin: 10px;
-  padding: 15px;
+  padding: 10px;
   position: relative;
-  box-shadow: 2px 2px 2px lightgrey;
+  box-shadow: 2px 2px 2px lightslategray;
 }
 
 .control_label {
   margin: 30px 0px 0px 0px;
+  padding: 5px;
+  font-family: Arial, Helvetica, sans-serif;
+  color: black;
 }
 
 .DateRangePickerInput__withBorder{
@@ -455,10 +458,22 @@ hr {
   color: #cacccd;
 }
 
+.DateInput{
+  width: 115px;
+  height: 40px;
+  padding-bottom: 10px;
+}
+
+.DateInput_input{
+  font-size: 15px;
+  border: 1px solid lightgray;
+  border-radius: 5px;
+}
+
 .data_value{
   color: black;
   text-align: center;
-  font-size: 3rem;
+  font-size: 25px;
   margin: 0;
 }
 
@@ -466,8 +481,44 @@ hr {
   color: grey;
   margin: 0;
   text-align: center;
+  font-size: 15px;
 }
 
+.title{
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+@media (max-width: 1000px) {
+  .pretty_container {
+    padding: 5px;
+    margin: 5px; 
+  }
+  .title{
+    margin-bottom: 0px;
+  }
+  .data_value{
+    font-size: 20px;
+  }
+  .data_info{
+    font-size: 10px;
+  }
+  .control_label{
+    font-size: 12px;
+  }
+  .DateInput{
+    width: 80px;
+    height: 30px;
+    margin: 5px;
+  }
+  .DateInput_input{
+    font-size: 10px;
+    padding: 5px;
+  }
+  .select{
+    font-size: 10px;
+  }
+}
 
 /* Media Queries
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
