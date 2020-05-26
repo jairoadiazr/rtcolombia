@@ -1,4 +1,4 @@
-# R_T COLOMBIA COVID-19
+# $ R_{t} $ COLOMBIA COVID-19
 En esta página presentamos una estimación del número básico de reproducción temporal R_t de la epidemia del virus SARS-CoV-2 en Colombia, sus departamentos y sus distritos especiales.
 
 El número básico de reproducción temporal de una epidemia viral R_t lo definimos como el número promedio de personas que contagia una persona infectada promedio en el lapso de tiempo que permaneció infecciosa.
