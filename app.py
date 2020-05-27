@@ -374,7 +374,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
     ]
     # Update Rt
     for i, (location, (df_location, df_covid_location)) in enumerate(covid_dict.items()):
-        update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, colors[i])
+        #update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, colors[i])
         update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, colors[i], estimados=True)
     
     update_status(covid_dict, status_infectados)
@@ -413,11 +413,28 @@ def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annot
         rt_filt = sgnl.filtfilt([1/3, 1/3, 1/3], [1.0], rt_raw)
     else:
         rt_filt = rt_raw
+    
+    meanlen=5
+    aa=np.zeros(meanlen)
+    rt_raw0=rt_raw.copy()
+    for i in range(meanlen):
+        i1=(-meanlen-(meanlen-i))
+        i2=(-(meanlen-i))
+        print([i1,i2])
+        aa[i]=np.mean(np.diff(rt_raw0[i1:i2]))
+        rt_raw0[i2]=rt_raw0[i2-1]-aa[i]
+    
+    if len(rt_raw) > 9:
+        rt_filt0 = sgnl.filtfilt([1/3, 1/3, 1/3], [1.0], rt_raw0)
+    else:
+        rt_filt0 = rt_raw0
+
 
     start = time_vector.index(start_date)
     end = time_vector.index(end_date)
     time_vector = time_vector[start + 1: end + 2]
     rt_filt = rt_filt[start: end + 1]
+    rt_filt0 = rt_filt0[start: end + 1]
     
     new_data = {
         'x': time_vector, 
@@ -427,6 +444,15 @@ def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annot
         'line': {'color': color, 'dash': dash},
     }
     data_rt.append(new_data)
+
+    new_data0 = {
+        'x': time_vector, 
+        'y': rt_filt0, 
+        'mode': 'lines', 
+        'name': f'Rt0 {name} ' + msg,
+        'line': {'color': color, 'dash': dash},
+    }
+    data_rt.append(new_data0)
 
     annotations = list()
     for i, fecha_cuarentena in enumerate(cuarentenas):
