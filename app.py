@@ -351,10 +351,10 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
     
     if autotiempo=='autod':
         autod=True
-        slider_disabled=False
+        slider_disabled=True
     else:
         autod=False
-        slider_disabled=True
+        slider_disabled=False
 
     if dpto is None:
         dpto = list()
@@ -370,20 +370,6 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
 
     df_covid_filter = df_covid[(start_date <= df_covid.index) & (df_covid.index <= end_date)]
     df_covid_raw_filter = df_covid_raw[(start_date <= df_covid.index) & (df_covid.index <= end_date)]
-
-    data_rt = [
-        {
-            'x': time_vector[1:],
-            'y': np.zeros(len(time_vector)-1) + 1,
-            'hoverinfo': 'none',
-            'line': {
-                'color': 'red',
-                'width': 1,
-                'dash': 'dash'
-            },
-            'showlegend': False,
-        }
-    ]
 
     annotation_dict = {
         'yanchor': 'bottom',
@@ -406,6 +392,58 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
     #find d
     if autod==True:
         trecuperacion=round(df['dias'].median(skipna=True), 2)
+    print(trecuperacion)
+    print(trecuperacion*np.log(2)/14)
+    data_rt = [
+        {
+            'x': time_vector[1:],
+            'y': np.zeros(len(time_vector)-1) + 1,
+            'hoverinfo': 'none',
+            'line': {
+                'color': 'red',
+                'width': 1,
+                'dash': 'dash'
+            },
+            'showlegend': False,
+        },
+        {
+            'x': time_vector[1:],
+            'y': np.zeros(len(time_vector)-1) + trecuperacion*np.log(2)/7,
+            'hoverinfo': 'none',
+            'name': 'Duplicación de casos en 7 días',
+            'line': {
+                'color': 'mediumpurple',
+                'width': 1,
+                'dash': 'solid'
+            },
+            'showlegend': True,
+        },
+        {
+            'x': time_vector[1:],
+            'y': np.zeros(len(time_vector)-1) + trecuperacion*np.log(2)/14,
+            'hoverinfo': 'none',
+            'name': 'Duplicación de casos en 14 días',
+            'line': {
+                'color': 'purple',
+                'width': 1,
+                'dash': 'solid'
+            },
+            'showlegend': True,
+        },
+        {
+            'x': time_vector[1:],
+            'y': np.zeros(len(time_vector)-1) + trecuperacion*np.log(2)/21,
+            'hoverinfo': 'none',
+            'name': 'Duplicación de casos en 21 días',
+            'line': {
+                'color': 'indigo',
+                'width': 1,
+                'dash': 'solid'
+            },
+            'showlegend': True,
+        }
+
+    ]
 
     # Update Rt
     for i, (location, (df_location, df_covid_location)) in enumerate(covid_dict.items()):
@@ -414,7 +452,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, colors[i], estimados=True, autod=False, trecuperacion=trecuperacion)
     
     update_status(covid_dict, status_infectados)
-    
+
     return (
         rt_graph,
         *update_infectados(df_covid_filter, df_covid_raw_filter, log_infectados, daily_infectados, cum_infectados),
