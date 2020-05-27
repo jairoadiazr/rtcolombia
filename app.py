@@ -93,22 +93,23 @@ app.layout = html.Div([
                 display_format='DD-MMM-YYYY',
                 first_day_of_week=1,
             ),
-            html.P('Seleccione el tiempo de recuperación', className='control_label'),
+            html.P('Seleccione el periodo de infecciosidad', className='control_label'),
             dcc.RadioItems(
                 id='tiempoauto',
                 options=[
-                    {'label': 'Tiempo de recuperación automático', 'value': 'autod'},
-                    {'label': 'Tiempo de recuperación definido', 'value': 'inputd'}
+                    {'label': 'Tiempo medio de recuperación', 'value': 'autod'},
+                    {'label': 'Predeterminado', 'value': 'inputd'}
                 ],
                 value='autod'
             ),
             dcc.Slider(
                 id='trecuperacion',
                 min=5,
-                max=15,
-                step=0.5,
-                value=6.5,
-                marks={i: str(i) for i in np.arange(5, 15.5,0.5)},
+                max=20,
+                step=1,
+                value=7,
+                included=False,
+                marks={i: str(i) for i in range(5,21)},
             ),  
             html.P('Filtro por departamentos', className='control_label'),
             dcc.Dropdown(
@@ -322,6 +323,7 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
         Output('num_inf', 'children'),
         Output('num_rec', 'children'),
         Output('num_fall', 'children'),
+        Output('trecuperacion', 'disabled'),
     ],
     [
         Input('fecha', 'start_date'),
@@ -349,8 +351,10 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
     
     if autotiempo=='autod':
         autod=True
+        slider_disabled=False
     else:
         autod=False
+        slider_disabled=True
 
     if dpto is None:
         dpto = list()
@@ -398,10 +402,16 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         datetime(2020, 5, 11),
         datetime(2020, 6, 1),
     ]
+
+    #find d
+    if autod==True:
+        trecuperacion=round(df['dias'].median(skipna=True), 2)
+
     # Update Rt
     for i, (location, (df_location, df_covid_location)) in enumerate(covid_dict.items()):
         #update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, colors[i])
-        update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, colors[i], estimados=True, autod=autod, trecuperacion=trecuperacion)
+
+        update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, colors[i], estimados=True, autod=False, trecuperacion=trecuperacion)
     
     update_status(covid_dict, status_infectados)
     
@@ -416,6 +426,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         thousand_sep(int(df_covid.loc[current_date, 'infectados'] - df_covid.loc[current_date, 'recuperados'])),
         thousand_sep(int(df_covid.loc[current_date, 'recuperados'] - df_covid.loc[current_date, 'fallecidos'])),
         thousand_sep(int(df_covid.loc[current_date, 'fallecidos'])),
+        slider_disabled,
     )
 
 def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, color, estimados=False, autod=True, trecuperacion=6.5):
@@ -428,7 +439,7 @@ def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annot
         msg = 'sin ajuste'
         dash = 'solid'
     
-    time_vector = list(df_covid.index)
+    
     cumulcases = df_covid[filt] - df_covid['recuperados']
 
     if autod==False:
