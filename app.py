@@ -93,6 +93,23 @@ app.layout = html.Div([
                 display_format='DD-MMM-YYYY',
                 first_day_of_week=1,
             ),
+            html.P('Seleccione el tiempo de recuperación', className='control_label'),
+            dcc.RadioItems(
+                id='tiempoauto',
+                options=[
+                    {'label': 'Tiempo de recuperación automático', 'value': 'autod'},
+                    {'label': 'Tiempo de recuperación definido', 'value': 'inputd'}
+                ],
+                value='autod'
+            ),
+            dcc.Slider(
+                id='trecuperacion',
+                min=5,
+                max=15,
+                step=0.5,
+                value=6.5,
+                marks={i: str(i) for i in np.arange(5, 15.5,0.5)},
+            ),  
             html.P('Filtro por departamentos', className='control_label'),
             dcc.Dropdown(
                 id='departamento',
@@ -311,6 +328,8 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
         Input('fecha', 'end_date'),
         Input('departamento', 'value'),
         Input('municipio', 'value'),
+        Input('tiempoauto', 'value'),
+        Input('trecuperacion', 'value'),
     ],
     [
         State('rt_graph', 'figure'),
@@ -324,8 +343,15 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
     ]
 )
 def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, municipio: str=None, \
+    autotiempo : str='autod', trecuperacion : float=6.5, \
     rt_graph=None, log_infectados=None, daily_infectados=None, cum_infectados=None, \
-        daily_deaths=None, cum_deaths=None, status_infectados=None) -> list:
+    daily_deaths=None, cum_deaths=None, status_infectados=None) -> list:
+    
+    if autotiempo=='autod':
+        autod=True
+    else:
+        autod=False
+
     if dpto is None:
         dpto = list()
     if municipio is None:
@@ -375,7 +401,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
     # Update Rt
     for i, (location, (df_location, df_covid_location)) in enumerate(covid_dict.items()):
         #update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, colors[i])
-        update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, colors[i], estimados=True)
+        update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, colors[i], estimados=True, autod=autod, trecuperacion=trecuperacion)
     
     update_status(covid_dict, status_infectados)
     
@@ -392,7 +418,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         thousand_sep(int(df_covid.loc[current_date, 'fallecidos'])),
     )
 
-def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, color, estimados=False):
+def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, color, estimados=False, autod=True, trecuperacion=6.5):
     if estimados:
         filt = 'estimados'
         msg = 'ajustado (nowcast)'
@@ -403,9 +429,12 @@ def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annot
         dash = 'solid'
     
     time_vector = list(df_covid.index)
-    d_vector = calculate_days(time_vector[1:], df)
-    
     cumulcases = df_covid[filt] - df_covid['recuperados']
+
+    if autod==False:
+        d_vector=trecuperacion
+    else:
+        d_vector = calculate_days(time_vector[1:], df)
 
     # Estima rt tomando usando los días de contagio promedio
     rt_raw = d_vector * np.diff(np.log(cumulcases.astype('float64'))) + 1
@@ -448,8 +477,9 @@ def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annot
     new_data0 = {
         'x': time_vector, 
         'y': rt_filt0, 
+        'fill':'tonexty',
         'mode': 'lines', 
-        'name': f'Rt0 {name} ' + msg,
+        'name': f'Rt0 {name} ' + 'tendencia 7 días',
         'line': {'color': color, 'dash': dash},
     }
     data_rt.append(new_data0)
