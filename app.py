@@ -439,7 +439,7 @@ def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annot
         msg = 'sin ajuste'
         dash = 'solid'
     
-    
+    time_vector = list(df_covid.index)
     cumulcases = df_covid[filt] - df_covid['recuperados']
 
     if autod==False:
