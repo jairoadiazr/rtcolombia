@@ -408,7 +408,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         },
         {
             'x': time_vector[1:],
-            'y': np.zeros(len(time_vector)-1) + trecuperacion*np.log(2)/7,
+            'y': np.zeros(len(time_vector)-1) + trecuperacion*np.log(2)/7+1,
             'hoverinfo': 'none',
             'name': 'Duplicación de casos en 7 días',
             'line': {
@@ -420,7 +420,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         },
         {
             'x': time_vector[1:],
-            'y': np.zeros(len(time_vector)-1) + trecuperacion*np.log(2)/14,
+            'y': np.zeros(len(time_vector)-1) + trecuperacion*np.log(2)/14+1,
             'hoverinfo': 'none',
             'name': 'Duplicación de casos en 14 días',
             'line': {
@@ -432,7 +432,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         },
         {
             'x': time_vector[1:],
-            'y': np.zeros(len(time_vector)-1) + trecuperacion*np.log(2)/21,
+            'y': np.zeros(len(time_vector)-1) + trecuperacion*np.log(2)/21+1,
             'hoverinfo': 'none',
             'name': 'Duplicación de casos en 21 días',
             'line': {
