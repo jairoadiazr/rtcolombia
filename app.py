@@ -345,16 +345,12 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
     ]
 )
 def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, municipio: str=None, \
-    autotiempo : str='autod', trecuperacion : float=6.5, \
+    autotiempo: str='autod', trecuperacion: float=6.5, \
     rt_graph=None, log_infectados=None, daily_infectados=None, cum_infectados=None, \
     daily_deaths=None, cum_deaths=None, status_infectados=None) -> list:
     
-    if autotiempo=='autod':
-        autod=True
-        slider_disabled=True
-    else:
-        autod=False
-        slider_disabled=False
+    cond = autotiempo == 'autod'
+    autod, slider_disabled = cond, cond
 
     if dpto is None:
         dpto = list()
@@ -390,10 +386,9 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
     ]
 
     #find d
-    if autod==True:
-        trecuperacion=round(df['dias'].median(skipna=True), 2)
-    print(trecuperacion)
-    print(trecuperacion*np.log(2)/14)
+    if autod:
+        trecuperacion = round(df['dias'].median(skipna=True), 2)
+    
     data_rt = [
         {
             'x': time_vector[1:],
@@ -447,9 +442,8 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
 
     # Update Rt
     for i, (location, (df_location, df_covid_location)) in enumerate(covid_dict.items()):
-        #update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, colors[i])
-
-        update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, colors[i], estimados=True, autod=False, trecuperacion=trecuperacion)
+        update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, \
+            cuarentenas, colors[i], autod, trecuperacion, estimados=True)
     
     update_status(covid_dict, status_infectados)
 
@@ -467,7 +461,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         slider_disabled,
     )
 
-def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, color, estimados=False, autod=True, trecuperacion=6.5):
+def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, color, autod, trecuperacion, estimados=False):
     if estimados:
         filt = 'estimados'
         msg = 'ajustado (nowcast)'
@@ -480,8 +474,8 @@ def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annot
     time_vector = list(df_covid.index)
     cumulcases = df_covid[filt] - df_covid['recuperados']
 
-    if autod==False:
-        d_vector=trecuperacion
+    if not autod:
+        d_vector = trecuperacion
     else:
         d_vector = calculate_days(time_vector[1:], df)
 
@@ -492,15 +486,14 @@ def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annot
     else:
         rt_filt = rt_raw
     
-    meanlen=5
-    aa=np.zeros(meanlen)
-    rt_raw0=rt_raw.copy()
+    meanlen = 5
+    aa = np.zeros(meanlen)
+    rt_raw0 = rt_raw.copy()
     for i in range(meanlen):
-        i1=(-meanlen-(meanlen-i))
-        i2=(-(meanlen-i))
-        print([i1,i2])
-        aa[i]=np.mean(np.diff(rt_raw0[i1:i2]))
-        rt_raw0[i2]=rt_raw0[i2-1]-aa[i]
+        i1 = -meanlen-(meanlen-i)
+        i2 = -(meanlen-i)
+        aa[i] = np.mean(np.diff(rt_raw0[i1:i2]))
+        rt_raw0[i2] = rt_raw0[i2-1] - aa[i]
     
     if len(rt_raw) > 9:
         rt_filt0 = sgnl.filtfilt([1/3, 1/3, 1/3], [1.0], rt_raw0)
