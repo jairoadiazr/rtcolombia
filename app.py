@@ -10,15 +10,15 @@ import pandas as pd
 import numpy as np
 import scipy.signal as sgnl
 import plotly.graph_objects as go
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from copy import deepcopy
 from collections import defaultdict
 
 # Clase CovidData
 from covid import CovidData
 
-# Fecha reporte
-current_date = datetime.now().date()
+# Fecha colombiana de reporte
+current_date = pd.to_datetime((datetime.now(timezone.utc) - timedelta(hours=5)).date())
 
 # Obtiene información de covid Colombia
 covid_data = pd.read_json('https://www.datos.gov.co/resource/gt2j-8ykr.json?$limit=1000000')
@@ -632,7 +632,7 @@ def get_dfs(df, start_date):
     df_covid_raw = df_dates.merge(df_merged, how='left', left_index=True, right_index=True, sort=True).fillna(0)
     # Agrega estimados
     p = delay_probability(df)
-    probabilities = [1 / p[day] if day in p else 1 for day in (datetime.now() - df_dates.index).days]
+    probabilities = [1 / p[day] if day in p else 1 for day in (current_date - df_dates.index).days]
     df_covid_raw['nuevos_estimados'] = (df_covid_raw['nuevos_infectados'] * probabilities).apply(lambda x: round(x))
     # Crea DataFrame con los infectados acumulados hasta la fecha
     rename_dict = {
