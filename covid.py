@@ -84,29 +84,20 @@ class CovidData:
         Para más información ver el documento: 
         '''
         departamentos = self.covid_data['departamento'].unique()
-        fechas = sorted(self.covid_data['fecha_reporte'].unique())
         # Condición 0: el infectado es asintomático
         cond0 = self.covid_data['fecha_sintomas'].isna()
         for dpto in departamentos:
             # Condición 1: el departamento es 'dpto'
             cond1 = self.covid_data['departamento'] == dpto
-            for fecha in fechas:
-                # Condición 2: el reporte fue hecho antes de 'fecha'
-                cond2 = self.covid_data['fecha_reporte'] <= fecha
-                # Condición 3: el reporte fue hecho en 'fecha'
-                cond3 = self.covid_data['fecha_reporte'] == fecha
-
-                df_filter = self.covid_data[(cond1) & (cond2)]
-                n, w_raw = df_filter['dias_retraso'].count(), df_filter['dias_retraso'].median(skipna=True)
-                if n >= 20:
-                    w = w_raw
-                elif n == 0:
-                    w = self.w_hat
-                else:
-                    w = w_raw * n / 20 + self.w_hat * (20-n) / 20
-                # Para cada registro se hace la asignación basado en su departamento y los casos reportados hasta esa fecha
-                self.covid_data.loc[(cond0) & (cond1) & (cond3), 'fecha_sintomas'] = \
-                    self.covid_data[(cond0) & (cond1) & (cond3)]['fecha_reporte'] - timedelta(days=w)
+            df_filter = self.covid_data[(cond1)]
+            n, w_raw = df_filter['dias_retraso'].count(), df_filter['dias_retraso'].median(skipna=True)
+            if n >= 20:
+                w = w_raw
+            elif n == 0:
+                w = self.w_hat
+            else:
+                w = w_raw * n / 20 + self.w_hat * (20-n) / 20
+            self.covid_data.loc[(cond0) & (cond1), 'fecha_sintomas'] = self.covid_data[(cond0) & (cond1)]['fecha_reporte'] - timedelta(days=w)
 
 
     def assign_recovery_date(self): 
@@ -122,4 +113,4 @@ class CovidData:
         de días que una persona duró infectada.
         '''
         self.covid_data['dias'] = (self.covid_data['fecha_recuperacion'] - self.covid_data['fecha_sintomas']).apply(lambda x: x.days)
-        self.d_hat = self.covid_data['dias'].median(skipna=True)        
+        self.d_hat = self.covid_data['dias'].median(skipna=True)
