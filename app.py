@@ -565,7 +565,7 @@ def update_status(covid_dict, status_infectados):
 
 
 def update_matrix(df_covid, df_covid_raw):
-    data_table = df_covid.merge(df_covid_raw, how='inner', left_index=True, right_index=True).reset_index().rename(columns={'index': 'fecha'}).tail(10).iloc[::-1]
+    data_table = df_covid.merge(df_covid_raw, how='inner', left_index=True, right_index=True).reset_index().rename(columns={'index': 'fecha'}).tail(20).iloc[::-1]
     data_table['fecha'] = data_table['fecha'].dt.date
     data_table['recuperados'] = data_table['recuperados'] - data_table['fallecidos']
     data_table['nuevos_recuperados'] = data_table['nuevos_recuperados'] - data_table['nuevos_fallecidos']
