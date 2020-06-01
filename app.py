@@ -412,7 +412,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
             'hoverinfo': 'none',
             'name': 'Duplicación de casos en 7 días',
             'line': {
-                'color': 'mediumpurple',
+                'color': 'orangered',
                 'width': 1,
                 'dash': 'solid'
             },
@@ -424,7 +424,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
             'hoverinfo': 'none',
             'name': 'Duplicación de casos en 14 días',
             'line': {
-                'color': 'purple',
+                'color': 'orange',
                 'width': 1,
                 'dash': 'solid'
             },
@@ -436,7 +436,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
             'hoverinfo': 'none',
             'name': 'Duplicación de casos en 21 días',
             'line': {
-                'color': 'indigo',
+                'color': 'gold',
                 'width': 1,
                 'dash': 'solid'
             },
