@@ -402,23 +402,11 @@ def update_figure(start_date: datetime, end_date: datetime, autotiempo: str, tre
         },
         {
             'x': time_vector[1:],
-            'y': np.zeros(len(time_vector)-1) + trecuperacion*np.log(2)/7+1,
-            'hoverinfo': 'none',
-            'name': 'Duplicación de casos en 7 días',
-            'line': {
-                'color': 'orangered',
-                'width': 1,
-                'dash': 'solid'
-            },
-            'showlegend': True,
-        },
-        {
-            'x': time_vector[1:],
             'y': np.zeros(len(time_vector)-1) + trecuperacion*np.log(2)/14+1,
             'hoverinfo': 'none',
             'name': 'Duplicación de casos en 14 días',
             'line': {
-                'color': 'orange',
+                'color': 'orangered',
                 'width': 1,
                 'dash': 'solid'
             },
@@ -481,7 +469,7 @@ def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annot
     else:
         rt_filt = rt_raw
     
-    meanlen = 5
+    meanlen = 7
     aa = np.zeros(meanlen)
     rt_raw0 = rt_raw.copy()
     for i in range(meanlen):
