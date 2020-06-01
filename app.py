@@ -414,9 +414,9 @@ def update_figure(start_date: datetime, end_date: datetime, autotiempo: str, tre
         },
         {
             'x': time_vector[1:],
-            'y': np.zeros(len(time_vector)-1) + trecuperacion*np.log(2)/21+1,
+            'y': np.zeros(len(time_vector)-1) + trecuperacion*np.log(2)/30+1,
             'hoverinfo': 'none',
-            'name': 'Duplicación de casos en 21 días',
+            'name': 'Duplicación de casos en 30 días',
             'line': {
                 'color': 'gold',
                 'width': 1,
@@ -504,7 +504,7 @@ def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annot
         'y': rt_filt0, 
         'fill':'tonexty',
         'mode': 'lines', 
-        'name': f'Rt0 {name} ' + 'tendencia 7 días',
+        'name': f'Rt0 {name} ' + 'tendencia 9 días',
         'line': {'color': color, 'dash': dash},
     }
     data_rt.append(new_data0)
