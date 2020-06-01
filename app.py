@@ -328,10 +328,10 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
     [
         Input('fecha', 'start_date'),
         Input('fecha', 'end_date'),
-        Input('departamento', 'value'),
-        Input('municipio', 'value'),
         Input('tiempoauto', 'value'),
         Input('trecuperacion', 'value'),
+        Input('departamento', 'value'),
+        Input('municipio', 'value'),
     ],
     [
         State('rt_graph', 'figure'),
@@ -344,22 +344,21 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
         State('status_infectados', 'figure'),
     ]
 )
-def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, municipio: str=None, \
-    autotiempo : str='autod', trecuperacion : float=6.5, \
-    rt_graph=None, log_infectados=None, daily_infectados=None, cum_infectados=None, \
-    daily_deaths=None, cum_deaths=None, status_infectados=None) -> list:
-    
-    if autotiempo=='autod':
-        autod=True
-        slider_disabled=True
-    else:
-        autod=False
-        slider_disabled=False
+def update_figure(start_date: datetime, end_date: datetime, autotiempo: str, trecuperacion: float, \
+    dpto: list=None, municipio: list=None, rt_graph=None, log_infectados=None, daily_infectados=None, \
+        cum_infectados=None, daily_deaths=None, cum_deaths=None, status_infectados=None) -> list:
 
     if dpto is None:
         dpto = list()
     if municipio is None:
         municipio = list()
+
+    cond = (autotiempo == 'autod')
+    autod, slider_disabled = cond, cond
+
+    # Assign d_hat
+    if autod:
+        trecuperacion = d_hat
 
     start_date, end_date = pd.to_datetime(start_date), pd.to_datetime(end_date)
     locations = [*dpto, *municipio]
@@ -388,12 +387,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         datetime(2020, 5, 11),
         datetime(2020, 6, 1),
     ]
-
-    #find d
-    if autod==True:
-        trecuperacion=round(df['dias'].median(skipna=True), 2)
-    print(trecuperacion)
-    print(trecuperacion*np.log(2)/14)
+    
     data_rt = [
         {
             'x': time_vector[1:],
@@ -447,9 +441,8 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
 
     # Update Rt
     for i, (location, (df_location, df_covid_location)) in enumerate(covid_dict.items()):
-        #update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, colors[i])
-
-        update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, colors[i], estimados=True, autod=False, trecuperacion=trecuperacion)
+        update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, \
+            cuarentenas, colors[i], autod, trecuperacion, estimados=True)
     
     update_status(covid_dict, status_infectados)
 
@@ -467,7 +460,7 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         slider_disabled,
     )
 
-def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, color, estimados=False, autod=True, trecuperacion=6.5):
+def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, color, autod, trecuperacion, estimados=False):
     if estimados:
         filt = 'estimados'
         msg = 'ajustado (nowcast)'
@@ -479,28 +472,23 @@ def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annot
     
     time_vector = list(df_covid.index)
     cumulcases = df_covid[filt] - df_covid['recuperados']
-
-    if autod==False:
-        d_vector=trecuperacion
-    else:
-        d_vector = calculate_days(time_vector[1:], df)
+    d = trecuperacion
 
     # Estima rt tomando usando los días de contagio promedio
-    rt_raw = d_vector * np.diff(np.log(cumulcases.astype('float64'))) + 1
+    rt_raw = d * np.diff(np.log(cumulcases.astype('float64'))) + 1
     if len(rt_raw) > 9:
         rt_filt = sgnl.filtfilt([1/3, 1/3, 1/3], [1.0], rt_raw)
     else:
         rt_filt = rt_raw
     
-    meanlen=5
-    aa=np.zeros(meanlen)
-    rt_raw0=rt_raw.copy()
+    meanlen = 5
+    aa = np.zeros(meanlen)
+    rt_raw0 = rt_raw.copy()
     for i in range(meanlen):
-        i1=(-meanlen-(meanlen-i))
-        i2=(-(meanlen-i))
-        print([i1,i2])
-        aa[i]=np.mean(np.diff(rt_raw0[i1:i2]))
-        rt_raw0[i2]=rt_raw0[i2-1]-aa[i]
+        i1 = -meanlen-(meanlen-i)
+        i2 = -(meanlen-i)
+        aa[i] = np.mean(np.diff(rt_raw0[i1:i2]))
+        rt_raw0[i2] = rt_raw0[i2-1] - aa[i]
     
     if len(rt_raw) > 9:
         rt_filt0 = sgnl.filtfilt([1/3, 1/3, 1/3], [1.0], rt_raw0)
@@ -701,7 +689,7 @@ def update_table(df, info_table):
     return info_table
 
 
-def calculate_days(time_vector, df):
+def calculate_days(time_vector, df): # deprecated
     d_vector = list()
     for day in time_vector:
         new_df = df[df['fecha_sintomas'] <= day]
