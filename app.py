@@ -93,6 +93,24 @@ app.layout = html.Div([
                 display_format='DD-MMM-YYYY',
                 first_day_of_week=1,
             ),
+            html.P('Seleccione el periodo de infecciosidad', className='control_label'),
+            dcc.RadioItems(
+                id='tiempoauto',
+                options=[
+                    {'label': 'Tiempo medio de recuperación', 'value': 'autod'},
+                    {'label': 'Predeterminado', 'value': 'inputd'}
+                ],
+                value='autod'
+            ),
+            dcc.Slider(
+                id='trecuperacion',
+                min=5,
+                max=20,
+                step=1,
+                value=7,
+                included=False,
+                marks={i: str(i) for i in range(5,21)},
+            ),  
             html.P('Filtro por departamentos', className='control_label'),
             dcc.Dropdown(
                 id='departamento',
@@ -305,10 +323,13 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
         Output('num_inf', 'children'),
         Output('num_rec', 'children'),
         Output('num_fall', 'children'),
+        Output('trecuperacion', 'disabled'),
     ],
     [
         Input('fecha', 'start_date'),
         Input('fecha', 'end_date'),
+        Input('tiempoauto', 'value'),
+        Input('trecuperacion', 'value'),
         Input('departamento', 'value'),
         Input('municipio', 'value'),
     ],
@@ -323,13 +344,21 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
         State('status_infectados', 'figure'),
     ]
 )
-def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, municipio: str=None, \
-    rt_graph=None, log_infectados=None, daily_infectados=None, cum_infectados=None, \
-        daily_deaths=None, cum_deaths=None, status_infectados=None) -> list:
+def update_figure(start_date: datetime, end_date: datetime, autotiempo: str, trecuperacion: float, \
+    dpto: list=None, municipio: list=None, rt_graph=None, log_infectados=None, daily_infectados=None, \
+        cum_infectados=None, daily_deaths=None, cum_deaths=None, status_infectados=None) -> list:
+
     if dpto is None:
         dpto = list()
     if municipio is None:
         municipio = list()
+
+    cond = (autotiempo == 'autod')
+    autod, slider_disabled = cond, cond
+
+    # Assign d_hat
+    if autod:
+        trecuperacion = d_hat
 
     start_date, end_date = pd.to_datetime(start_date), pd.to_datetime(end_date)
     locations = [*dpto, *municipio]
@@ -340,20 +369,6 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
 
     df_covid_filter = df_covid[(start_date <= df_covid.index) & (df_covid.index <= end_date)]
     df_covid_raw_filter = df_covid_raw[(start_date <= df_covid.index) & (df_covid.index <= end_date)]
-
-    data_rt = [
-        {
-            'x': time_vector[1:],
-            'y': np.zeros(len(time_vector)-1) + 1,
-            'hoverinfo': 'none',
-            'line': {
-                'color': 'red',
-                'width': 1,
-                'dash': 'dash'
-            },
-            'showlegend': False,
-        }
-    ]
 
     annotation_dict = {
         'yanchor': 'bottom',
@@ -372,13 +387,53 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         datetime(2020, 5, 11),
         datetime(2020, 6, 1),
     ]
+    
+    data_rt = [
+        {
+            'x': time_vector[1:],
+            'y': np.zeros(len(time_vector)-1) + 1,
+            'hoverinfo': 'none',
+            'line': {
+                'color': 'red',
+                'width': 1,
+                'dash': 'dash'
+            },
+            'showlegend': False,
+        },
+        {
+            'x': time_vector[1:],
+            'y': np.zeros(len(time_vector)-1) + trecuperacion*np.log(2)/14+1,
+            'hoverinfo': 'none',
+            'name': 'Duplicación de casos en 14 días',
+            'line': {
+                'color': 'orangered',
+                'width': 1,
+                'dash': 'solid'
+            },
+            'showlegend': True,
+        },
+        {
+            'x': time_vector[1:],
+            'y': np.zeros(len(time_vector)-1) + trecuperacion*np.log(2)/21+1,
+            'hoverinfo': 'none',
+            'name': 'Duplicación de casos en 21 días',
+            'line': {
+                'color': 'gold',
+                'width': 1,
+                'dash': 'solid'
+            },
+            'showlegend': True,
+        }
+
+    ]
+
     # Update Rt
     for i, (location, (df_location, df_covid_location)) in enumerate(covid_dict.items()):
-        update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, colors[i])
-        update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, colors[i], estimados=True)
+        update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, \
+            cuarentenas, colors[i], autod, trecuperacion, estimados=True)
     
     update_status(covid_dict, status_infectados)
-    
+
     return (
         rt_graph,
         *update_infectados(df_covid_filter, df_covid_raw_filter, log_infectados, daily_infectados, cum_infectados),
@@ -390,9 +445,10 @@ def update_figure(start_date: datetime, end_date: datetime, dpto: str=None, muni
         thousand_sep(int(df_covid.loc[current_date, 'infectados'] - df_covid.loc[current_date, 'recuperados'])),
         thousand_sep(int(df_covid.loc[current_date, 'recuperados'] - df_covid.loc[current_date, 'fallecidos'])),
         thousand_sep(int(df_covid.loc[current_date, 'fallecidos'])),
+        slider_disabled,
     )
 
-def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, color, estimados=False):
+def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, color, autod, trecuperacion, estimados=False):
     if estimados:
         filt = 'estimados'
         msg = 'ajustado (nowcast)'
@@ -403,21 +459,36 @@ def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annot
         dash = 'solid'
     
     time_vector = list(df_covid.index)
-    d_vector = calculate_days(time_vector[1:], df)
-    
     cumulcases = df_covid[filt] - df_covid['recuperados']
+    d = trecuperacion
 
     # Estima rt tomando usando los días de contagio promedio
-    rt_raw = d_vector * np.diff(np.log(cumulcases.astype('float64'))) + 1
+    rt_raw = d * np.diff(np.log(cumulcases.astype('float64'))) + 1
     if len(rt_raw) > 9:
         rt_filt = sgnl.filtfilt([1/3, 1/3, 1/3], [1.0], rt_raw)
     else:
         rt_filt = rt_raw
+    
+    meanlen = 7
+    aa = np.zeros(meanlen)
+    rt_raw0 = rt_raw.copy()
+    for i in range(meanlen):
+        i1 = -meanlen-(meanlen-i)
+        i2 = -(meanlen-i)
+        aa[i] = np.mean(np.diff(rt_raw0[i1:i2]))
+        rt_raw0[i2] = rt_raw0[i2-1] - aa[i]
+    
+    if len(rt_raw) > 9:
+        rt_filt0 = sgnl.filtfilt([1/3, 1/3, 1/3], [1.0], rt_raw0)
+    else:
+        rt_filt0 = rt_raw0
+
 
     start = time_vector.index(start_date)
     end = time_vector.index(end_date)
     time_vector = time_vector[start + 1: end + 2]
     rt_filt = rt_filt[start: end + 1]
+    rt_filt0 = rt_filt0[start: end + 1]
     
     new_data = {
         'x': time_vector, 
@@ -427,6 +498,16 @@ def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annot
         'line': {'color': color, 'dash': dash},
     }
     data_rt.append(new_data)
+
+    new_data0 = {
+        'x': time_vector, 
+        'y': rt_filt0, 
+        'fill':'tonexty',
+        'mode': 'lines', 
+        'name': f'Rt0 {name} ' + 'tendencia 7 días',
+        'line': {'color': color, 'dash': dash},
+    }
+    data_rt.append(new_data0)
 
     annotations = list()
     for i, fecha_cuarentena in enumerate(cuarentenas):
@@ -596,7 +677,7 @@ def update_table(df, info_table):
     return info_table
 
 
-def calculate_days(time_vector, df):
+def calculate_days(time_vector, df): # deprecated
     d_vector = list()
     for day in time_vector:
         new_df = df[df['fecha_sintomas'] <= day]
