@@ -100,12 +100,34 @@ class CovidData:
             self.covid_data.loc[(cond0) & (cond1), 'fecha_sintomas'] = self.covid_data[(cond0) & (cond1)]['fecha_reporte'] - timedelta(days=w)
 
 
-    def assign_recovery_date(self): 
+    def assign_recovery_date(self, rd=13):
         '''Para los fallecidos, se asigna su fecha de recuperación 
         como su fecha de muerte.
+
+        Para los pacientes con estado de salud 'recuperado' que no
+        tengan fecha_recuperacion, se asume que tardaron en recuperarse
+        rd días después de la fecha de síntomas.
+
+        Para los pacientes que reportaron síntomas hace más de rd
+        días y no tienen fecha de recuperación, se asume que tardaron
+        rd días en recuperarse
         '''
         self.covid_data.loc[self.covid_data['estado_salud'] == 'Fallecido', 'fecha_recuperacion'] = \
             self.covid_data[self.covid_data['estado_salud'] == 'Fallecido']['fecha_muerte']
+
+        # Sin fecha de recuperación
+        miss_rd = self.covid_data['fecha_recuperacion'].isna()
+
+        # Asigna fecha de recuperacion a los pacientes con estado de salud 'recuperado' que no tienen
+        self.covid_data.loc[(self.covid_data['estado_salud'] == 'Recuperado') & (miss_rd), 'fecha_recuperacion'] = \
+            self.covid_data[(self.covid_data['estado_salud'] == 'Recuperado') & (miss_rd)]['fecha_sintomas'] + timedelta(days=rd)
+
+        # Fecha límite
+        limit_date = pd.to_datetime('now') - timedelta(hours=(24*rd + 5))
+
+        # Asigna fecha de recuperación a los pacientes que presentaron síntomas hace más de rd días que no tienen
+        self.covid_data.loc[miss_rd, 'fecha_recuperacion'] = \
+            self.covid_data[(self.covid_data['fecha_sintomas'] < limit_date) & (miss_rd)]['fecha_sintomas'] + timedelta(days=rd)
 
     
     def get_recovery_days(self):
