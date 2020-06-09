@@ -140,14 +140,14 @@ app.layout = html.Div([
                 ),
                 html.Div([
                     html.P(0, id='num_inf', className='data_value'),
-                    html.P('Infectados activos', className='data_info'),
+                    html.P('Infecciosos estimados', className='data_info'),
                 ],
                     style={'width': '25%'},
                     className='pretty_container',
                 ),
                 html.Div([
                     html.P(0, id='num_rec', className='data_value'),
-                    html.P('Recuperados', className='data_info')
+                    html.P('Recuperados estimados', className='data_info')
                 ],
                     style={'width': '25%'},
                     className='pretty_container',
@@ -442,7 +442,7 @@ def update_figure(start_date: datetime, end_date: datetime, autotiempo: str, tre
         *update_deaths(df_covid_filter, df_covid_raw_filter, daily_deaths, cum_deaths),
         status_infectados,
         round(df['dias'].median(skipna=True), 2),
-        thousand_sep(int(df_covid.loc[current_date, 'infectados'] - df_covid.loc[current_date, 'recuperados'])),
+        thousand_sep(int(df_covid.loc[current_date, 'estimados'] - df_covid.loc[current_date, 'recuperados'])),
         thousand_sep(int(df_covid.loc[current_date, 'recuperados'] - df_covid.loc[current_date, 'fallecidos'])),
         thousand_sep(int(df_covid.loc[current_date, 'fallecidos'])),
         slider_disabled,
