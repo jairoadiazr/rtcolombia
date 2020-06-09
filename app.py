@@ -300,7 +300,7 @@ app.layout = html.Div([
     dcc.Markdown('- Héctor López'),
     dcc.Markdown('- Bernardo Uribe, División de Ciencias Básicas, Universidad del Norte - Barranquilla'),
     dcc.Markdown('La información completa de este proyecto se puede consultar en :'),
-    dcc.Markdown('https://www.rtcolombia.com'),
+    dcc.Markdown('http://www.rtcolombia.com'),
     dcc.Markdown('Sociedad Colombiana de Matemáticas'),
     ],
 className='container',
