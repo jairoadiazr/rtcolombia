@@ -15,8 +15,10 @@ class CovidData:
         self.dates_to_datetime()
         self.get_delay()
         self.deal_asymptomatic()
+        self.deal_deaths()
         self.assign_recovery_date()
         self.get_recovery_days()
+        self.covid_data.drop(columns=['dummy_date'])
 
 
     def rename_columns(self):
@@ -89,6 +91,8 @@ class CovidData:
         for dpto in departamentos:
             # Condición 1: el departamento es 'dpto'
             cond1 = self.covid_data['departamento'] == dpto
+            if self.covid_data[cond0 & cond1].empty:
+                continue
             df_filter = self.covid_data[(cond1)]
             n, w_raw = df_filter['dias_retraso'].count(), df_filter['dias_retraso'].median(skipna=True)
             if n >= 20:
@@ -97,39 +101,32 @@ class CovidData:
                 w = self.w_hat
             else:
                 w = w_raw * n / 20 + self.w_hat * (20-n) / 20
-            self.covid_data.loc[(cond0) & (cond1), 'fecha_sintomas'] = self.covid_data[(cond0) & (cond1)]['fecha_reporte'] - timedelta(days=w)
+            self.covid_data['dummy_date'] = self.covid_data['fecha_reporte'] - timedelta(days=int(w))
+            self.covid_data.loc[cond0 & cond1, 'fecha_sintomas'] = self.covid_data.loc[(cond0) & (cond1), ['fecha_recuperacion', 'dummy_date', 'fecha_muerte']].min(axis=1, skipna=True) 
+
+
+    def deal_deaths(self):
+        '''Para los fallecidos, se asigna su fecha de recuperación 
+        como su fecha de muerte.
+        '''
+
+        cond = self.covid_data['fecha_muerte'].isna()
+        self.covid_data.loc[~cond, 'fecha_recuperacion'] = \
+            self.covid_data[~cond]['fecha_muerte']
 
 
     def assign_recovery_date(self, rd=13):
-        '''Para los fallecidos, se asigna su fecha de recuperación 
-        como su fecha de muerte.
-
-        Para los pacientes con estado de salud 'recuperado' que no
-        tengan fecha_recuperacion, se asume que tardaron en recuperarse
-        rd días después de la fecha de síntomas.
-
-        Para los pacientes que reportaron síntomas hace más de rd
-        días y no tienen fecha de recuperación, se asume que tardaron
-        rd días en recuperarse
+        '''Asigna una fecha de recuperación asumiendo que todos
+        los pacientes tardan máximo rd días en recuperarse
         '''
-        self.covid_data.loc[self.covid_data['estado_salud'] == 'Fallecido', 'fecha_recuperacion'] = \
-            self.covid_data[self.covid_data['estado_salud'] == 'Fallecido']['fecha_muerte']
-
-        # Sin fecha de recuperación
-        miss_rd = self.covid_data['fecha_recuperacion'].isna()
-
-        # Asigna fecha de recuperacion a los pacientes con estado de salud 'recuperado' que no tienen
-        self.covid_data.loc[(self.covid_data['estado_salud'] == 'Recuperado') & (miss_rd), 'fecha_recuperacion'] = \
-            self.covid_data[(self.covid_data['estado_salud'] == 'Recuperado') & (miss_rd)]['fecha_sintomas'] + timedelta(days=rd)
-
-        # Fecha límite
         limit_date = pd.to_datetime('now') - timedelta(hours=(24*rd + 5))
+        cond1 = self.covid_data['fecha_sintomas'] < limit_date
+        cond2 = self.covid_data['fecha_muerte'].isna()
 
-        # Asigna fecha de recuperación a los pacientes que presentaron síntomas hace más de rd días que no tienen
-        self.covid_data.loc[miss_rd, 'fecha_recuperacion'] = \
-            self.covid_data[(self.covid_data['fecha_sintomas'] < limit_date) & (miss_rd)]['fecha_sintomas'] + timedelta(days=rd)
+        self.covid_data['dummy_date'] = self.covid_data['fecha_sintomas'] + timedelta(days=rd)
+        self.covid_data.loc[cond1 & cond2,'fecha_recuperacion'] = self.covid_data[cond1 & cond2][['fecha_recuperacion', 'dummy_date']].min(axis=1, skipna=True)
 
-    
+
     def get_recovery_days(self):
         ''' Agrega la columna 'días', que consiste en el número
         de días que una persona duró infectada.
