@@ -76,10 +76,10 @@ app.layout = html.Div([
         dcc.Markdown('COVID-19 Colombia: cálculo de $ R_{t} $ en tiempo real'),
         className='title',
     ),
-    html.H6(
-        dcc.Markdown(f'Haga click [aquí](https://rtcolombiaalpha.herokuapp.com) para visitar la versión anterior de esta aplicación'),
-        style={'text-align': 'center'}
-    ),
+    #html.H6(
+    #    dcc.Markdown(f'Haga click [aquí](https://rtcolombiaalpha.herokuapp.com) para visitar la versión anterior de esta aplicación'),
+    #    style={'text-align': 'center'}
+    #),
     html.Div([
         html.Div([
             html.P('Seleccione un rango de fechas', className='control_label'),
@@ -295,10 +295,10 @@ app.layout = html.Div([
     #     )
     # ),
     dcc.Markdown('Elaborado por:'),
-    dcc.Markdown('- Jairo Díaz, División de Ciencias Básicas, Universidad del Norte - Barranquilla'),
-    dcc.Markdown('- Jairo Espinosa, Facultad de Minas, Universidad Nacional de Colombia - Medellín'),
+    dcc.Markdown('- Jairo Díaz'),
+    dcc.Markdown('- Jairo Espinosa'),
     dcc.Markdown('- Héctor López'),
-    dcc.Markdown('- Bernardo Uribe, División de Ciencias Básicas, Universidad del Norte - Barranquilla'),
+    dcc.Markdown('- Bernardo Uribe'),
     dcc.Markdown('La información completa de este proyecto se puede consultar en :'),
     dcc.Markdown('http://www.rtcolombia.com'),
     dcc.Markdown('Sociedad Colombiana de Matemáticas'),
