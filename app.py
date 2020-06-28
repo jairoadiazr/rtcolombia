@@ -649,8 +649,10 @@ def get_dfs(df, start_date):
     df4 = df.groupby('fecha_reporte').count()[['id']].rename(columns={'id': 'nuevos_reportados'})
     # Mergea (y ordena) los DataFrames
     df_merged = df1.merge(df2, how='outer', left_index=True, right_index=True).merge(df3, how='outer', left_index=True, right_index=True).merge(df4, how='outer', left_index=True, right_index=True)
+    # Corrige fecha de inicio en caso de ser necesario
+    start_date = min(df_merged.index.min(), start_date)
     # Crea DataFrame de fechas continuas desde el principio de la epidemia
-    df_dates = pd.DataFrame(index=pd.date_range(start=min(df_merged.index.min(), start_date), end=current_date))
+    df_dates = pd.DataFrame(index=pd.date_range(start=start_date, end=current_date))
     # Rellena el DataFrame para que en los días que no hubo casos reportados asignar el valor de 0
     df_covid_raw = df_dates.merge(df_merged, how='left', left_index=True, right_index=True, sort=True).fillna(0)
     # Agrega estimados
@@ -666,6 +668,10 @@ def get_dfs(df, start_date):
         'nuevos_reportados': 'reportados'
         }
     df_covid = df_covid_raw.cumsum().rename(columns=rename_dict)
+
+    # Crea lista con los infectados activos
+    infectados_activos = [sum(df_covid_raw.loc[start_date + timedelta(days=i-8):start_date + timedelta(days=i)]['nuevos_estimados']) for i in range(len(df_covid_raw))]
+    df_covid['infectados_activos'] = infectados_activos
 
     return df_covid_raw, df_covid
 
