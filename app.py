@@ -132,31 +132,24 @@ app.layout = html.Div([
         html.Div([
             html.Div([
                 html.Div([
-                    html.P(d_hat, id='d_hat', className='data_value'),
-                    html.P('Media de días infectado', className='data_info'),
-                ],
-                    style={'width': '25%'},
-                    className='pretty_container',
-                ),
-                html.Div([
                     html.P(0, id='num_inf', className='data_value'),
                     html.P('Infecciosos estimados', className='data_info'),
                 ],
-                    style={'width': '25%'},
+                    style={'width': '33.33%'},
                     className='pretty_container',
                 ),
                 html.Div([
                     html.P(0, id='num_rec', className='data_value'),
                     html.P('Recuperados estimados', className='data_info')
                 ],
-                    style={'width': '25%'},
+                    style={'width': '33.33%'},
                     className='pretty_container',
                 ),
                 html.Div([
                     html.P(0, id='num_fall', className='data_value'),
                     html.P('Fallecidos', className='data_info')
                 ],
-                    style={'width': '25%'},
+                    style={'width': '33.33%'},
                     className='pretty_container',
                 ),
         ],
@@ -298,7 +291,6 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
         Output('daily_deaths', 'figure'),
         Output('cum_deaths', 'figure'),
         Output('status_infectados', 'figure'),
-        Output('d_hat', 'children'),
         Output('num_inf', 'children'),
         Output('num_rec', 'children'),
         Output('num_fall', 'children'),
@@ -418,7 +410,6 @@ def update_figure(start_date: datetime, end_date: datetime, autotiempo: str, tre
         *update_matrix(df_covid, df_covid_raw),
         *update_deaths(df_covid_filter, df_covid_raw_filter, daily_deaths, cum_deaths),
         status_infectados,
-        round(df['dias'].median(skipna=True), 2),
         thousand_sep(int(df_covid.loc[current_date, 'estimados'] - df_covid.loc[current_date, 'recuperados'])),
         thousand_sep(int(df_covid.loc[current_date, 'recuperados'] - df_covid.loc[current_date, 'fallecidos'])),
         thousand_sep(int(df_covid.loc[current_date, 'fallecidos'])),
