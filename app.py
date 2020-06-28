@@ -76,10 +76,6 @@ app.layout = html.Div([
         dcc.Markdown('COVID-19 Colombia: cálculo de $ R_{t} $ en tiempo real'),
         className='title',
     ),
-    #html.H6(
-    #    dcc.Markdown(f'Haga click [aquí](https://rtcolombiaalpha.herokuapp.com) para visitar la versión anterior de esta aplicación'),
-    #    style={'text-align': 'center'}
-    #),
     html.Div([
         html.Div([
             html.P('Seleccione un rango de fechas', className='control_label'),
@@ -471,6 +467,7 @@ def update_infectados(df_covid, df_covid_raw, log_infectados, daily_infectados, 
 
     infectados = df_covid_raw['nuevos_infectados'] 
     estimados = df_covid_raw['nuevos_estimados']
+    reportados = df_covid_raw['nuevos_reportados']
 
     infectados_cum = df_covid['infectados'] 
     estimados_cum = df_covid['estimados']
@@ -503,17 +500,23 @@ def update_infectados(df_covid, df_covid_raw, log_infectados, daily_infectados, 
             'x': time_vector,
             'y': infectados,
             'type': 'bar',
-            'name': 'Infectados reportados',
+            'name': 'Infectados por fecha síntomas',
         },
         {
             'x': time_vector,
             'y': estimados - infectados,
             'type': 'bar',
-            'name': 'Estimados',
-        }
+            'name': 'Estimados por nowcast',
+        },
+        {
+            'x': time_vector,
+            'y': reportados,
+            'type': 'line',
+            'name': 'Reportados diarios',
+        },
     ]
     daily_infectados['data'] = data_daily
-    daily_infectados['layout']['yaxis']['title'] = 'Infectados diarios'
+    daily_infectados['layout']['yaxis']['title'] = 'Infectados diarios por fecha síntomas'
     daily_infectados['layout']['barmode'] = 'stack'
 
     data_cum = [
@@ -521,17 +524,17 @@ def update_infectados(df_covid, df_covid_raw, log_infectados, daily_infectados, 
             'x': time_vector,
             'y': infectados_cum,
             'type': 'bar',
-            'name': 'Infectados reportados',
+            'name': 'Infectados reportados por fecha síntomas',
         },
         {
             'x': time_vector,
             'y': estimados_cum - infectados_cum,
             'type': 'bar',
-            'name': 'Estimados',
+            'name': 'Estimados acumulados por nowcast',
         }
     ]
     cum_infectados['data'] = data_cum
-    cum_infectados['layout']['yaxis']['title'] = 'Infectados acumulados'
+    cum_infectados['layout']['yaxis']['title'] = 'Infectados acumulados por fecha de síntomas'
     cum_infectados['layout']['barmode'] = 'stack'
     return log_infectados, daily_infectados, cum_infectados
 
@@ -589,10 +592,24 @@ def update_status(covid_dict, status_infectados):
 def update_matrix(df_covid, df_covid_raw):
     data_table = df_covid.merge(df_covid_raw, how='inner', left_index=True, right_index=True).reset_index().rename(columns={'index': 'fecha'}).tail(20).iloc[::-1]
     data_table['fecha'] = data_table['fecha'].dt.date
+    data_table['infectados_activos'] = data_table['estimados'] - data_table['recuperados']
     data_table['recuperados'] = data_table['recuperados'] - data_table['fallecidos']
     data_table['nuevos_recuperados'] = data_table['nuevos_recuperados'] - data_table['nuevos_fallecidos']
-    parse_head = lambda x: ' '.join(map(lambda y: y.title(), x.split('_')))
-    columns = [{'name': parse_head(i), 'id': i} for i in data_table.columns]
+    rename_dict = {
+        'fecha': 'Fecha',
+        'infectados': 'Infectados acumulados', 
+        'fallecidos': 'Fallecidos',
+        'estimados': 'Infectados-nowcast',
+        'infectados_activos': 'Infectados activos',
+        'nuevos_infectados': 'Infectados por FIS', 
+        'nuevos_fallecidos': 'Fallecidos por día',
+        'nuevos_estimados': 'Infectados-nowcast por día',
+        'nuevos_reportados': 'Reportados por día',
+        }
+    data_table = data_table.rename(columns=rename_dict)
+    data_table = data_table[['Fecha', 'Infectados acumulados', 'Fallecidos', 'Infectados-nowcast', \
+        'Infectados por FIS', 'Fallecidos por día', 'Infectados-nowcast por día', 'Reportados por día']]
+    columns = [{'name': col, 'id': col} for col in data_table.columns]
     data = data_table.to_dict('records')
     return columns, data
 
@@ -646,8 +663,10 @@ def get_dfs(df, start_date):
     df2 = df.groupby('fecha_recuperacion').count()[['id']].rename(columns={'id': 'nuevos_recuperados'})
     # Número de fallecidos por fecha
     df3 = df.groupby('fecha_muerte').count()[['id']].rename(columns={'id': 'nuevos_fallecidos'})
+    # Número de reportados por fecha
+    df4 = df.groupby('fecha_reporte').count()[['id']].rename(columns={'id': 'nuevos_reportados'})
     # Mergea (y ordena) los DataFrames
-    df_merged = df1.merge(df2, how='outer', left_index=True, right_index=True).merge(df3, how='outer', left_index=True, right_index=True)
+    df_merged = df1.merge(df2, how='outer', left_index=True, right_index=True).merge(df3, how='outer', left_index=True, right_index=True).merge(df4, how='outer', left_index=True, right_index=True)
     # Crea DataFrame de fechas continuas desde el principio de la epidemia
     df_dates = pd.DataFrame(index=pd.date_range(start=min(df_merged.index.min(), start_date), end=current_date))
     # Rellena el DataFrame para que en los días que no hubo casos reportados asignar el valor de 0
@@ -661,7 +680,8 @@ def get_dfs(df, start_date):
         'nuevos_infectados': 'infectados', 
         'nuevos_recuperados': 'recuperados', 
         'nuevos_fallecidos': 'fallecidos',
-        'nuevos_estimados': 'estimados'
+        'nuevos_estimados': 'estimados',
+        'nuevos_reportados': 'reportados'
         }
     df_covid = df_covid_raw.cumsum().rename(columns=rename_dict)
 
