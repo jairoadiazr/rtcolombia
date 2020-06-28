@@ -209,7 +209,7 @@ app.layout = html.Div([
     html.Div([
         html.Div(
             dcc.Graph(
-                id='log_infectados',
+                id='reported',
                 config=graph_config,
                 figure=go.Figure(
                     layout=layout_graph
@@ -261,7 +261,7 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
 @app.callback(
     [
         Output('rt_graph', 'figure'),
-        Output('log_infectados', 'figure'),
+        Output('reported', 'figure'),
         Output('daily_infectados', 'figure'),
         Output('cum_infectados', 'figure'),
         Output('days_table', 'columns'),
@@ -281,7 +281,7 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
     ],
     [
         State('rt_graph', 'figure'),
-        State('log_infectados', 'figure'),
+        State('reported', 'figure'),
         State('daily_infectados', 'figure'),
         State('cum_infectados', 'figure'),
         State('daily_deaths', 'figure'),
@@ -290,7 +290,7 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
     ]
 )
 def update_figure(start_date: datetime, end_date: datetime, \
-    dpto: list=None, municipio: list=None, rt_graph=None, log_infectados=None, daily_infectados=None, \
+    dpto: list=None, municipio: list=None, rt_graph=None, reported=None, daily_infectados=None, \
         cum_infectados=None, daily_deaths=None, cum_deaths=None, status_infectados=None) -> list:
 
     if dpto is None:
@@ -376,7 +376,7 @@ def update_figure(start_date: datetime, end_date: datetime, \
 
     return (
         rt_graph,
-        *update_infectados(df_covid_filter, df_covid_raw_filter, log_infectados, daily_infectados, cum_infectados),
+        *update_infectados(df_covid_filter, df_covid_raw_filter, reported, daily_infectados, cum_infectados),
         *update_matrix(df_covid, df_covid_raw),
         *update_deaths(df_covid_filter, df_covid_raw_filter, daily_deaths, cum_deaths),
         status_infectados,
@@ -462,7 +462,7 @@ def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annot
     rt_graph['layout']['annotations'] = annotations
 
 
-def update_infectados(df_covid, df_covid_raw, log_infectados, daily_infectados, cum_infectados):
+def update_infectados(df_covid, df_covid_raw, reported, daily_infectados, cum_infectados):
     time_vector = list(df_covid.index)
 
     infectados = df_covid_raw['nuevos_infectados'] 
@@ -472,28 +472,17 @@ def update_infectados(df_covid, df_covid_raw, log_infectados, daily_infectados, 
     infectados_cum = df_covid['infectados'] 
     estimados_cum = df_covid['estimados']
     recuperados_cum = df_covid['recuperados']
-
-    cumulcases = infectados_cum - recuperados_cum 
-    estimate_cumulcases = estimados_cum - recuperados_cum
     
-    log_infect = np.log(cumulcases.astype('float64'))
-    log_estim = np.log(estimate_cumulcases.astype('float64'))
-    data_log = [
+    data_rep = [
         {
             'x': time_vector,
-            'y': log_infect,
-            'mode': 'lines',
+            'y': reportados,
+            'mode': 'bar',
             'name': 'Activos',
         },
-        {
-            'x': time_vector,
-            'y': log_estim,
-            'mode': 'lines',
-            'name': 'Estimados',
-        }
     ]
-    log_infectados['data'] = data_log
-    log_infectados['layout']['yaxis']['title'] = 'log(Infectados activos)'
+    reported['data'] = data_rep
+    reported['layout']['yaxis']['title'] = 'Número de casos reportados por día'
     
     data_daily = [
         {
@@ -507,13 +496,7 @@ def update_infectados(df_covid, df_covid_raw, log_infectados, daily_infectados, 
             'y': estimados - infectados,
             'type': 'bar',
             'name': 'Estimados por nowcast',
-        },
-        {
-            'x': time_vector,
-            'y': reportados,
-            'type': 'line',
-            'name': 'Reportados diarios',
-        },
+        }
     ]
     daily_infectados['data'] = data_daily
     daily_infectados['layout']['yaxis']['title'] = 'Infectados diarios por fecha síntomas'
@@ -536,7 +519,7 @@ def update_infectados(df_covid, df_covid_raw, log_infectados, daily_infectados, 
     cum_infectados['data'] = data_cum
     cum_infectados['layout']['yaxis']['title'] = 'Infectados acumulados por fecha de síntomas'
     cum_infectados['layout']['barmode'] = 'stack'
-    return log_infectados, daily_infectados, cum_infectados
+    return reported, daily_infectados, cum_infectados
 
 
 def update_deaths(df_covid, df_covid_raw, daily_deaths, cum_deaths):
