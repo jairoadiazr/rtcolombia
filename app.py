@@ -397,10 +397,16 @@ def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annot
     
     time_vector = list(df_covid.index)
     cumulcases = df_covid[filt] - df_covid['recuperados']
+
+    activos = df_covid['infectados_activos']
+    infectados = np.array(df_covid['estimados'], dtype=int)
+    diarios = np.concatenate(([infectados[0]], [infectados[i] - infectados[i-1] for i in range(1, len(infectados))]))
+    diarios = sgnl.filtfilt([1/3, 1/3, 1/3], [1.0], diarios)
     d = trecuperacion
 
     # Estima rt tomando usando los días de contagio promedio
     rt_raw = d * np.diff(np.log(cumulcases.astype('float64'))) + 1
+    rt_raw = d * diarios / activos
     if len(rt_raw) > 9:
         rt_filt = sgnl.filtfilt([1/3, 1/3, 1/3], [1.0], rt_raw)
     else:
