@@ -471,14 +471,13 @@ def update_infectados(df_covid, df_covid_raw, reported, daily_infectados, cum_in
 
     infectados_cum = df_covid['infectados'] 
     estimados_cum = df_covid['estimados']
-    recuperados_cum = df_covid['recuperados']
     
     data_rep = [
         {
             'x': time_vector,
             'y': reportados,
-            'mode': 'bar',
-            'name': 'Activos',
+            'type': 'bar',
+            'name': 'Casos reportados por día',
         },
     ]
     reported['data'] = data_rep
