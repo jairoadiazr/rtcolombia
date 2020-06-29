@@ -76,6 +76,10 @@ app.layout = html.Div([
         dcc.Markdown('COVID-19 Colombia: cálculo de $ R_{t} $ en tiempo real'),
         className='title',
     ),
+    html.H6(
+        dcc.Markdown(f'Información obtenida de la [base de datos](https://www.datos.gov.co/Salud-y-Protecci-n-Social/Casos-positivos-de-COVID-19-en-Colombia/gt2j-8ykr/data) recopilada por el Instituto Nacional de Salud'),
+        style={'text-align': 'center'}
+    ),
     html.Div([
         html.Div([
             html.P('Seleccione un rango de fechas', className='control_label'),
@@ -108,31 +112,6 @@ app.layout = html.Div([
             className='pretty_container',
         ),
         html.Div([
-            html.Div([
-                html.Div([
-                    html.P(0, id='num_inf', className='data_value'),
-                    html.P('Infecciosos estimados', className='data_info'),
-                ],
-                    style={'width': '33.33%'},
-                    className='pretty_container',
-                ),
-                html.Div([
-                    html.P(0, id='num_rec', className='data_value'),
-                    html.P('Recuperados estimados', className='data_info')
-                ],
-                    style={'width': '33.33%'},
-                    className='pretty_container',
-                ),
-                html.Div([
-                    html.P(0, id='num_fall', className='data_value'),
-                    html.P('Fallecidos', className='data_info')
-                ],
-                    style={'width': '33.33%'},
-                    className='pretty_container',
-                ),
-        ],
-        style={'display': 'flex', 'flex-direction': 'row'},
-        ),
             html.Div(
                 dcc.Graph(
                     id='rt_graph',
@@ -150,7 +129,7 @@ app.layout = html.Div([
     className='row',
     style={'display': 'flex'},
     ),
-    dcc.Markdown(f'**IMPORTANTE:** El [reporte de infectados y recuperados](https://www.datos.gov.co/Salud-y-Protecci-n-Social/Casos-positivos-de-COVID-19-en-Colombia/gt2j-8ykr/data) \
+    dcc.Markdown(f'**IMPORTANTE:** El reporte de infectados y recuperados \
         presenta en tiempo medio de retraso de {w_hat} días, por lo que la interpretación de los valores de Rt para la última semana debe ser hecha con precaución.'),
     html.Div([    
         html.Div(
@@ -269,9 +248,6 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
         Output('daily_deaths', 'figure'),
         Output('cum_deaths', 'figure'),
         Output('status_infectados', 'figure'),
-        Output('num_inf', 'children'),
-        Output('num_rec', 'children'),
-        Output('num_fall', 'children'),
     ],
     [
         Input('fecha', 'start_date'),
@@ -380,9 +356,6 @@ def update_figure(start_date: datetime, end_date: datetime, \
         *update_matrix(df_covid, df_covid_raw),
         *update_deaths(df_covid_filter, df_covid_raw_filter, daily_deaths, cum_deaths),
         status_infectados,
-        thousand_sep(int(df_covid.loc[current_date, 'estimados'] - df_covid.loc[current_date, 'recuperados'])),
-        thousand_sep(int(df_covid.loc[current_date, 'recuperados'] - df_covid.loc[current_date, 'fallecidos'])),
-        thousand_sep(int(df_covid.loc[current_date, 'fallecidos'])),
     )
 
 def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, color, trecuperacion, estimados=False):
