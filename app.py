@@ -676,7 +676,7 @@ def get_dfs(df, start_date):
     df_covid = df_covid_raw.cumsum().rename(columns=rename_dict)
 
     # Crea lista con los infectados activos
-    infectados_activos = [sum(df_covid_raw.loc[start_date + timedelta(days=i-8):start_date + timedelta(days=i)]['nuevos_estimados']) for i in range(len(df_covid_raw))]
+    infectados_activos = [sum(df_covid_raw.loc[start_date + timedelta(days=i-11):start_date + timedelta(days=i-3)]['nuevos_estimados']) for i in range(len(df_covid_raw))]
     df_covid['infectados_activos'] = infectados_activos
 
     return df_covid_raw, df_covid
