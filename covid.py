@@ -16,7 +16,7 @@ class CovidData:
         self.get_delay()
         self.deal_asymptomatic()
         self.deal_deaths()
-        self.assign_recovery_date()
+        self.assign_recovery_date(9)
         self.get_recovery_days()
         self.covid_data.drop(columns=['dummy_date'])
 

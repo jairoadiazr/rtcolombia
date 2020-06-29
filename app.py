@@ -76,10 +76,6 @@ app.layout = html.Div([
         dcc.Markdown('COVID-19 Colombia: cálculo de $ R_{t} $ en tiempo real'),
         className='title',
     ),
-    #html.H6(
-    #    dcc.Markdown(f'Haga click [aquí](https://rtcolombiaalpha.herokuapp.com) para visitar la versión anterior de esta aplicación'),
-    #    style={'text-align': 'center'}
-    #),
     html.Div([
         html.Div([
             html.P('Seleccione un rango de fechas', className='control_label'),
@@ -93,24 +89,6 @@ app.layout = html.Div([
                 display_format='DD-MMM-YYYY',
                 first_day_of_week=1,
             ),
-            html.P('Seleccione el periodo de infecciosidad', className='control_label'),
-            dcc.RadioItems(
-                id='tiempoauto',
-                options=[
-                    {'label': 'Tiempo medio de recuperación', 'value': 'autod'},
-                    {'label': 'Predeterminado', 'value': 'inputd'}
-                ],
-                value='autod'
-            ),
-            dcc.Slider(
-                id='trecuperacion',
-                min=5,
-                max=20,
-                step=1,
-                value=7,
-                included=False,
-                marks={i: str(i) for i in range(5,21)},
-            ),  
             html.P('Filtro por departamentos', className='control_label'),
             dcc.Dropdown(
                 id='departamento',
@@ -132,31 +110,24 @@ app.layout = html.Div([
         html.Div([
             html.Div([
                 html.Div([
-                    html.P(d_hat, id='d_hat', className='data_value'),
-                    html.P('Media de días infectado', className='data_info'),
-                ],
-                    style={'width': '25%'},
-                    className='pretty_container',
-                ),
-                html.Div([
                     html.P(0, id='num_inf', className='data_value'),
                     html.P('Infecciosos estimados', className='data_info'),
                 ],
-                    style={'width': '25%'},
+                    style={'width': '33.33%'},
                     className='pretty_container',
                 ),
                 html.Div([
                     html.P(0, id='num_rec', className='data_value'),
                     html.P('Recuperados estimados', className='data_info')
                 ],
-                    style={'width': '25%'},
+                    style={'width': '33.33%'},
                     className='pretty_container',
                 ),
                 html.Div([
                     html.P(0, id='num_fall', className='data_value'),
                     html.P('Fallecidos', className='data_info')
                 ],
-                    style={'width': '25%'},
+                    style={'width': '33.33%'},
                     className='pretty_container',
                 ),
         ],
@@ -238,7 +209,7 @@ app.layout = html.Div([
     html.Div([
         html.Div(
             dcc.Graph(
-                id='log_infectados',
+                id='reported',
                 config=graph_config,
                 figure=go.Figure(
                     layout=layout_graph
@@ -274,26 +245,6 @@ app.layout = html.Div([
         ),
         className='pretty_container',
     ),
-    # dcc.Graph(
-    #     id='info_table',
-    #     figure=go.Figure(
-    #         go.Table(
-    #             cells={
-    #                 'line_color': 'darkslategray',
-    #                 'fill_color': ['lightgray', 'white','lightgray', 'white'],
-    #                 'font_size': 12,
-    #                 'height': 30
-    #             },
-    #             header = {
-    #                 'values': ['Casos', 'Número', 'Infectados', 'Número'],
-    #                 'line_color': 'darkslategray',
-    #                 'fill_color': 'gray',
-    #                 'font': {'color':'white', 'size': 12},
-    #                 'height': 30
-    #             },
-    #         )
-    #     )
-    # ),
     dcc.Markdown('Elaborado por:'),
     dcc.Markdown('- Jairo Díaz'),
     dcc.Markdown('- Jairo Espinosa'),
@@ -310,42 +261,36 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
 @app.callback(
     [
         Output('rt_graph', 'figure'),
-        Output('log_infectados', 'figure'),
+        Output('reported', 'figure'),
         Output('daily_infectados', 'figure'),
         Output('cum_infectados', 'figure'),
-        # Output('info_table', 'figure'),
         Output('days_table', 'columns'),
         Output('days_table', 'data'),
         Output('daily_deaths', 'figure'),
         Output('cum_deaths', 'figure'),
         Output('status_infectados', 'figure'),
-        Output('d_hat', 'children'),
         Output('num_inf', 'children'),
         Output('num_rec', 'children'),
         Output('num_fall', 'children'),
-        Output('trecuperacion', 'disabled'),
     ],
     [
         Input('fecha', 'start_date'),
         Input('fecha', 'end_date'),
-        Input('tiempoauto', 'value'),
-        Input('trecuperacion', 'value'),
         Input('departamento', 'value'),
         Input('municipio', 'value'),
     ],
     [
         State('rt_graph', 'figure'),
-        State('log_infectados', 'figure'),
+        State('reported', 'figure'),
         State('daily_infectados', 'figure'),
         State('cum_infectados', 'figure'),
-        # State('info_table', 'figure'),
         State('daily_deaths', 'figure'),
         State('cum_deaths', 'figure'),
         State('status_infectados', 'figure'),
     ]
 )
-def update_figure(start_date: datetime, end_date: datetime, autotiempo: str, trecuperacion: float, \
-    dpto: list=None, municipio: list=None, rt_graph=None, log_infectados=None, daily_infectados=None, \
+def update_figure(start_date: datetime, end_date: datetime, \
+    dpto: list=None, municipio: list=None, rt_graph=None, reported=None, daily_infectados=None, \
         cum_infectados=None, daily_deaths=None, cum_deaths=None, status_infectados=None) -> list:
 
     if dpto is None:
@@ -353,12 +298,7 @@ def update_figure(start_date: datetime, end_date: datetime, autotiempo: str, tre
     if municipio is None:
         municipio = list()
 
-    cond = (autotiempo == 'autod')
-    autod, slider_disabled = cond, cond
-
-    # Assign d_hat
-    if autod:
-        trecuperacion = d_hat
+    trecuperacion = d_hat
 
     start_date, end_date = pd.to_datetime(start_date), pd.to_datetime(end_date)
     locations = [*dpto, *municipio]
@@ -430,25 +370,22 @@ def update_figure(start_date: datetime, end_date: datetime, autotiempo: str, tre
     # Update Rt
     for i, (location, (df_location, df_covid_location)) in enumerate(covid_dict.items()):
         update_rt(df_location, df_covid_location, location, start_date, end_date, rt_graph, data_rt, annotation_dict, \
-            cuarentenas, colors[i], autod, trecuperacion, estimados=True)
+            cuarentenas, colors[i], trecuperacion, estimados=True)
     
     update_status(covid_dict, status_infectados)
 
     return (
         rt_graph,
-        *update_infectados(df_covid_filter, df_covid_raw_filter, log_infectados, daily_infectados, cum_infectados),
-        # update_table(df, info_table), 
+        *update_infectados(df_covid_filter, df_covid_raw_filter, reported, daily_infectados, cum_infectados),
         *update_matrix(df_covid, df_covid_raw),
         *update_deaths(df_covid_filter, df_covid_raw_filter, daily_deaths, cum_deaths),
         status_infectados,
-        round(df['dias'].median(skipna=True), 2),
         thousand_sep(int(df_covid.loc[current_date, 'estimados'] - df_covid.loc[current_date, 'recuperados'])),
         thousand_sep(int(df_covid.loc[current_date, 'recuperados'] - df_covid.loc[current_date, 'fallecidos'])),
         thousand_sep(int(df_covid.loc[current_date, 'fallecidos'])),
-        slider_disabled,
     )
 
-def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, color, autod, trecuperacion, estimados=False):
+def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annotation_dict, cuarentenas, color, trecuperacion, estimados=False):
     if estimados:
         filt = 'estimados'
         msg = 'ajustado (nowcast)'
@@ -460,10 +397,16 @@ def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annot
     
     time_vector = list(df_covid.index)
     cumulcases = df_covid[filt] - df_covid['recuperados']
+
+    activos = df_covid['infectados_activos']
+    infectados = np.array(df_covid['estimados'], dtype=int)
+    diarios = np.concatenate(([infectados[0]], [infectados[i] - infectados[i-1] for i in range(1, len(infectados))]))
+    diarios = sgnl.filtfilt([1/3, 1/3, 1/3], [1.0], diarios)
     d = trecuperacion
 
     # Estima rt tomando usando los días de contagio promedio
     rt_raw = d * np.diff(np.log(cumulcases.astype('float64'))) + 1
+    rt_raw = d * diarios / activos
     if len(rt_raw) > 9:
         rt_filt = sgnl.filtfilt([1/3, 1/3, 1/3], [1.0], rt_raw)
     else:
@@ -525,54 +468,43 @@ def update_rt(df, df_covid, name, start_date, end_date, rt_graph, data_rt, annot
     rt_graph['layout']['annotations'] = annotations
 
 
-def update_infectados(df_covid, df_covid_raw, log_infectados, daily_infectados, cum_infectados):
+def update_infectados(df_covid, df_covid_raw, reported, daily_infectados, cum_infectados):
     time_vector = list(df_covid.index)
 
     infectados = df_covid_raw['nuevos_infectados'] 
     estimados = df_covid_raw['nuevos_estimados']
+    reportados = df_covid_raw['nuevos_reportados']
 
     infectados_cum = df_covid['infectados'] 
     estimados_cum = df_covid['estimados']
-    recuperados_cum = df_covid['recuperados']
-
-    cumulcases = infectados_cum - recuperados_cum 
-    estimate_cumulcases = estimados_cum - recuperados_cum
     
-    log_infect = np.log(cumulcases.astype('float64'))
-    log_estim = np.log(estimate_cumulcases.astype('float64'))
-    data_log = [
+    data_rep = [
         {
             'x': time_vector,
-            'y': log_infect,
-            'mode': 'lines',
-            'name': 'Activos',
+            'y': reportados,
+            'type': 'bar',
+            'name': 'Casos reportados por día',
         },
-        {
-            'x': time_vector,
-            'y': log_estim,
-            'mode': 'lines',
-            'name': 'Estimados',
-        }
     ]
-    log_infectados['data'] = data_log
-    log_infectados['layout']['yaxis']['title'] = 'log(Infectados activos)'
+    reported['data'] = data_rep
+    reported['layout']['yaxis']['title'] = 'Número de casos reportados por día'
     
     data_daily = [
         {
             'x': time_vector,
             'y': infectados,
             'type': 'bar',
-            'name': 'Infectados reportados',
+            'name': 'Infectados por fecha síntomas',
         },
         {
             'x': time_vector,
             'y': estimados - infectados,
             'type': 'bar',
-            'name': 'Estimados',
+            'name': 'Estimados por nowcast',
         }
     ]
     daily_infectados['data'] = data_daily
-    daily_infectados['layout']['yaxis']['title'] = 'Infectados diarios'
+    daily_infectados['layout']['yaxis']['title'] = 'Infectados diarios por fecha síntomas'
     daily_infectados['layout']['barmode'] = 'stack'
 
     data_cum = [
@@ -580,19 +512,19 @@ def update_infectados(df_covid, df_covid_raw, log_infectados, daily_infectados, 
             'x': time_vector,
             'y': infectados_cum,
             'type': 'bar',
-            'name': 'Infectados reportados',
+            'name': 'Infectados reportados por fecha síntomas',
         },
         {
             'x': time_vector,
             'y': estimados_cum - infectados_cum,
             'type': 'bar',
-            'name': 'Estimados',
+            'name': 'Estimados acumulados por nowcast',
         }
     ]
     cum_infectados['data'] = data_cum
-    cum_infectados['layout']['yaxis']['title'] = 'Infectados acumulados'
+    cum_infectados['layout']['yaxis']['title'] = 'Infectados acumulados por fecha de síntomas'
     cum_infectados['layout']['barmode'] = 'stack'
-    return log_infectados, daily_infectados, cum_infectados
+    return reported, daily_infectados, cum_infectados
 
 
 def update_deaths(df_covid, df_covid_raw, daily_deaths, cum_deaths):
@@ -648,10 +580,24 @@ def update_status(covid_dict, status_infectados):
 def update_matrix(df_covid, df_covid_raw):
     data_table = df_covid.merge(df_covid_raw, how='inner', left_index=True, right_index=True).reset_index().rename(columns={'index': 'fecha'}).tail(20).iloc[::-1]
     data_table['fecha'] = data_table['fecha'].dt.date
+    data_table['infectados_activos'] = data_table['estimados'] - data_table['recuperados']
     data_table['recuperados'] = data_table['recuperados'] - data_table['fallecidos']
     data_table['nuevos_recuperados'] = data_table['nuevos_recuperados'] - data_table['nuevos_fallecidos']
-    parse_head = lambda x: ' '.join(map(lambda y: y.title(), x.split('_')))
-    columns = [{'name': parse_head(i), 'id': i} for i in data_table.columns]
+    rename_dict = {
+        'fecha': 'Fecha',
+        'infectados': 'Infectados acumulados', 
+        'fallecidos': 'Fallecidos',
+        'estimados': 'Infectados-nowcast',
+        'infectados_activos': 'Infectados activos',
+        'nuevos_infectados': 'Infectados por FIS', 
+        'nuevos_fallecidos': 'Fallecidos por día',
+        'nuevos_estimados': 'Infectados-nowcast por día',
+        'nuevos_reportados': 'Reportados por día',
+        }
+    data_table = data_table.rename(columns=rename_dict)
+    data_table = data_table[['Fecha', 'Infectados acumulados', 'Fallecidos', 'Infectados-nowcast', \
+        'Infectados por FIS', 'Fallecidos por día', 'Infectados-nowcast por día', 'Reportados por día']]
+    columns = [{'name': col, 'id': col} for col in data_table.columns]
     data = data_table.to_dict('records')
     return columns, data
 
@@ -705,10 +651,14 @@ def get_dfs(df, start_date):
     df2 = df.groupby('fecha_recuperacion').count()[['id']].rename(columns={'id': 'nuevos_recuperados'})
     # Número de fallecidos por fecha
     df3 = df.groupby('fecha_muerte').count()[['id']].rename(columns={'id': 'nuevos_fallecidos'})
+    # Número de reportados por fecha
+    df4 = df.groupby('fecha_reporte').count()[['id']].rename(columns={'id': 'nuevos_reportados'})
     # Mergea (y ordena) los DataFrames
-    df_merged = df1.merge(df2, how='outer', left_index=True, right_index=True).merge(df3, how='outer', left_index=True, right_index=True)
+    df_merged = df1.merge(df2, how='outer', left_index=True, right_index=True).merge(df3, how='outer', left_index=True, right_index=True).merge(df4, how='outer', left_index=True, right_index=True)
+    # Corrige fecha de inicio en caso de ser necesario
+    start_date = min(df_merged.index.min(), start_date)
     # Crea DataFrame de fechas continuas desde el principio de la epidemia
-    df_dates = pd.DataFrame(index=pd.date_range(start=min(df_merged.index.min(), start_date), end=current_date))
+    df_dates = pd.DataFrame(index=pd.date_range(start=start_date, end=current_date))
     # Rellena el DataFrame para que en los días que no hubo casos reportados asignar el valor de 0
     df_covid_raw = df_dates.merge(df_merged, how='left', left_index=True, right_index=True, sort=True).fillna(0)
     # Agrega estimados
@@ -720,10 +670,15 @@ def get_dfs(df, start_date):
         'nuevos_infectados': 'infectados', 
         'nuevos_recuperados': 'recuperados', 
         'nuevos_fallecidos': 'fallecidos',
-        'nuevos_estimados': 'estimados'
+        'nuevos_estimados': 'estimados',
+        'nuevos_reportados': 'reportados'
         }
     df_covid = df_covid_raw.cumsum().rename(columns=rename_dict)
-    
+
+    # Crea lista con los infectados activos
+    infectados_activos = [sum(df_covid_raw.loc[start_date + timedelta(days=i-11):start_date + timedelta(days=i-3)]['nuevos_estimados']) for i in range(len(df_covid_raw))]
+    df_covid['infectados_activos'] = infectados_activos
+
     return df_covid_raw, df_covid
 
 
