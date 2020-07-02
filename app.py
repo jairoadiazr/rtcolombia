@@ -6,6 +6,7 @@ import dash_html_components as html
 from dash.dependencies import Input, Output, State
 
 # Librerías estándar 
+import os
 import pandas as pd
 import numpy as np
 import scipy.signal as sgnl
@@ -19,9 +20,14 @@ from covid import CovidData
 
 # Fecha colombiana de reporte
 current_date = pd.to_datetime((datetime.now(timezone.utc) - timedelta(hours=5)).date())
+data_path = os.path.join('data', 'covid-' + str(datetime.date(current_date)) + '.csv')
 
 # Obtiene información de covid Colombia
-covid_data = pd.read_json('https://www.datos.gov.co/resource/gt2j-8ykr.json?$limit=1000000')
+try:
+    covid_data = pd.read_csv(data_path)
+except FileNotFoundError:
+    covid_data = pd.read_json('https://www.datos.gov.co/resource/gt2j-8ykr.json?$limit=1000000')
+    covid_data.to_csv(data_path)
 
 # Instancia la información en la clase CovidData
 cd = CovidData(covid_data)
