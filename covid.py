@@ -64,7 +64,7 @@ class CovidData:
         for fecha in fechas:
             self.covid_data[fecha] = self.covid_data[fecha].replace(['-   -', 'Asintomático', 'asintomático'], np.datetime64('NaT'))
             try:
-                self.covid_data[fecha] = pd.to_datetime(self.covid_data[fecha])
+                self.covid_data[fecha] = pd.to_datetime(self.covid_data[fecha]).dt.normalize()
             except Exception as e:
                 print('Hay una fecha en formato incorrecto: ', e)
                 self.covid_data[fecha] = pd.to_datetime(self.covid_data[fecha], errors='coerce')
