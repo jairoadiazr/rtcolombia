@@ -1,4 +1,4 @@
-# Rt COLOMBIA COVID-19
+# Rt Colombia COVID-19
 
 En este reporte presentamos una estimación del número básico de reproducción temporal *Rt* de la epidemia del virus SARS-CoV-2 en Colombia, sus departamentos y municipios.
 
@@ -11,12 +11,50 @@ https://www.datos.gov.co/Salud-y-Protecci-n-Social/Casos-positivos-de-COVID-19-e
 
 ## Tablero de visualización
 
-Ver [aquí](http://rtcolombia.com/) la última implementación del tablero.
+Ver [aquí](https://dashboard.rtcolombia.com/) la última implementación del tablero.
+
+## Prerequisitos
+
+- Git
+- Python3
+
+## Instalación
+
+```bash
+git clone https://github.com/jairoadiazr/rtcolombia.git
+pip install -r requirements.txt
+```
+
+## Visualización local
+
+Para poder visualizar el aplicativo, es necesario editar localmente la última línea del archivo `app.py`.
+
+Reemplazar
+
+```python
+if __name__ == '__main__':
+    app.run_server(debug=False)
+```
+
+por
+
+```python
+if __name__ == '__main__':
+    app.run_server(debug=True, host='0.0.0.0')
+```
+
+Luego ejecutar en el directorio de instalación
+
+```bash
+python app.py
+```
+
+Finalmente, visualizar el tablero en http://localhost:8050/
 
 ## Documentación
 
 El documento que contextualiza y explica el modelo se puede consultar en:
-https://drive.google.com/open?id=1g7Xn7JQ9SorXAxauiDdxjDFs7-PI0XBc
+http://rtcolombia.com/
 
 ## Autores
 
