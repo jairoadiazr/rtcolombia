@@ -135,8 +135,8 @@ app.layout = html.Div([
     className='row',
     style={'display': 'flex'},
     ),
-    dcc.Markdown(f'**IMPORTANTE:** El reporte de infectados y recuperados \
-        presenta en tiempo medio de retraso de {w_hat} días, por lo que la interpretación de los valores de Rt para la última semana debe ser hecha con precaución.'),
+    dcc.Markdown(f'**IMPORTANTE:** El reporte de infectados presenta un tiempo medio de retraso de {w_hat} \
+        días, por lo que la interpretación de los valores de Rt para los últimos 15 días debe ser hecha con precaución.'),
     html.Div([    
         html.Div(
             dcc.Graph(
