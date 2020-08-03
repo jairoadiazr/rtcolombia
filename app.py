@@ -95,7 +95,7 @@ app.layout = html.Div([
                 max_date_allowed=current_date,
                 initial_visible_month=current_date,
                 end_date=current_date,
-                start_date=current_date - timedelta(days=30),
+                start_date=datetime(2020, 4, 1),
                 display_format='DD-MMM-YYYY',
                 first_day_of_week=1,
             ),
