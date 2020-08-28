@@ -21,13 +21,18 @@ from covid import CovidData
 # Fecha colombiana de reporte
 current_date = pd.to_datetime((datetime.now(timezone.utc) - timedelta(hours=5)).date())
 data_path = os.path.join('data', 'covid-' + str(datetime.date(current_date)) + '.csv')
+necessary_columns = [
+                        'id_de_caso', 'fecha_de_notificaci_n', 'ciudad_de_ubicaci_n', 'departamento', 
+                        'atenci_n', 'edad', 'sexo', 'tipo', 'estado', 'pa_s_de_procedencia', 'fis', 
+                        'fecha_de_muerte', 'fecha_diagnostico', 'fecha_recuperado', 'fecha_reporte_web' 
+                    ]
 
 # Obtiene información de covid Colombia
 try:
     covid_data = pd.read_csv(data_path)
 except FileNotFoundError:
     covid_data = pd.read_json('https://www.datos.gov.co/resource/gt2j-8ykr.json?$limit=1000000')
-    covid_data.to_csv(data_path)
+    covid_data[necessary_columns].to_csv(data_path)
 
 # Instancia la información en la clase CovidData
 cd = CovidData(covid_data)

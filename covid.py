@@ -26,7 +26,6 @@ class CovidData:
         rename_dict = {
             'id_de_caso': 'id',
             'fecha_de_notificaci_n': 'fecha_notificacion',
-            'codigo_divipola': 'id_municipio',
             'ciudad_de_ubicaci_n': 'municipio',
             'departamento': 'departamento',
             'atenci_n': 'atencion',
