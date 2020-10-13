@@ -623,6 +623,8 @@ def calculate_days(time_vector, df): # deprecated
     return d_vector
 
 def delay_probability(df):
+    df = df[df['fecha_reporte'] > (pd.Timestamp(current_date-timedelta(days=14)))] #si quiere mirar solo los retrasos de reportes recientes
+    df = df[df['dias_retraso'] >= 0 ] #solo los que tienen retraso positivo. Hay retrasos negativos.
     total = df.shape[0]
     df_filter = df.groupby('dias_retraso', sort=True).count()['id']
     probabilities = {ix: sum(df_filter.loc[df_filter.index <= ix])/total for ix in df_filter.index}
@@ -691,4 +693,4 @@ def calculate_variables(locations, start_date):
     return df, df_covid, df_covid_raw, covid_dict
 
 if __name__ == '__main__':
-    app.run_server(debug=False)
+    app.run_server(debug=True, host='0.0.0.0')
