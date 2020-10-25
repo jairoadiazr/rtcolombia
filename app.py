@@ -31,7 +31,7 @@ necessary_columns = [
 try:
     covid_data = pd.read_csv(data_path)
 except FileNotFoundError:
-    covid_data = pd.read_json('https://www.datos.gov.co/resource/gt2j-8ykr.json')
+    covid_data = pd.read_json('https://www.datos.gov.co/resource/gt2j-8ykr.json?$limit=10000000')
     covid_data[necessary_columns].to_csv(data_path)
 
 # Instancia la información en la clase CovidData
