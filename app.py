@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# coding: utf-8
+
 # Dash
 import dash
 import dash_table
