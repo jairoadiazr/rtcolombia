@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# coding: utf-8
+
 # Dash
 import dash
 import dash_table
@@ -22,9 +25,10 @@ from covid import CovidData
 current_date = pd.to_datetime((datetime.now(timezone.utc) - timedelta(hours=5)).date())
 data_path = os.path.join('data', 'covid-' + str(datetime.date(current_date)) + '.csv')
 necessary_columns = [
-                        'id_de_caso', 'fecha_de_notificaci_n', 'ciudad_de_ubicaci_n', 'departamento', 
-                        'atenci_n', 'edad', 'sexo', 'tipo', 'estado', 'pa_s_de_procedencia', 'fis', 
-                        'fecha_de_muerte', 'fecha_diagnostico', 'fecha_recuperado', 'fecha_reporte_web' 
+                        'id_de_caso', 'fecha_de_notificaci_n', 'ciudad_municipio_nom', 'departamento_nom', 
+                        'recuperado', 'edad', 'sexo', 'fuente_tipo_contagio', 'estado', 'pais_viajo_1_nom', 
+                        'fecha_inicio_sintomas','fecha_muerte', 'fecha_diagnostico', 'fecha_recuperado', 
+                        'fecha_reporte_web' 
                     ]
 
 # Obtiene información de covid Colombia
@@ -32,7 +36,8 @@ try:
     covid_data = pd.read_csv(data_path)
 except FileNotFoundError:
     covid_data = pd.read_json('https://www.datos.gov.co/resource/gt2j-8ykr.json?$limit=10000000')
-    covid_data[necessary_columns].to_csv(data_path)
+    covid_data = covid_data[necessary_columns]
+    covid_data.to_csv(data_path)
 
 # Instancia la información en la clase CovidData
 cd = CovidData(covid_data)
