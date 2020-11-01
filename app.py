@@ -543,11 +543,11 @@ def update_deaths(df_covid, df_covid_raw, daily_deaths, cum_deaths):
 
 def update_status(covid_dict, status_infectados):
     locations = list(covid_dict.keys())
-    options = ['Hospital', 'Hospital Uci', 'Recuperado', 'Fallecido']
+    options = covid_data['estado_salud'].unique()
     y = defaultdict(list)
     for location in locations:
         df = covid_dict[location][0]
-        df = df.groupby('atencion').count()[['id']]
+        df = df.groupby('estado_salud').count()[['id']]
         for option in options:
             try:
                 y[option].append(df.loc[option, 'id'])
