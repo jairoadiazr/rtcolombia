@@ -14,6 +14,7 @@ import pandas as pd
 import numpy as np
 import scipy.signal as sgnl
 import plotly.graph_objects as go
+import pytz
 from datetime import datetime, timedelta, timezone
 from copy import deepcopy
 from collections import defaultdict
@@ -22,8 +23,8 @@ from collections import defaultdict
 from covid import CovidData
 
 # Fecha colombiana de reporte
-current_date = pd.to_datetime((datetime.now(timezone.utc) - timedelta(hours=5)).date())
-data_path = os.path.join('data', 'covid-' + str(datetime.date(current_date)) + '.csv')
+current_date = pd.to_datetime(datetime.now(pytz.timezone('America/Bogota')).replace(tzinfo=None).date())
+data_path = os.path.join('data', 'covid-' + str(current_date.date()) + '.csv')
 necessary_columns = [
                         'id_de_caso', 'fecha_de_notificaci_n', 'ciudad_municipio_nom', 'departamento_nom', 
                         'recuperado', 'edad', 'sexo', 'fuente_tipo_contagio', 'estado', 'pais_viajo_1_nom', 
@@ -105,7 +106,7 @@ app.layout = html.Div([
                 max_date_allowed=current_date,
                 initial_visible_month=current_date,
                 end_date=current_date,
-                start_date=datetime(2020, 4, 1),
+                start_date=current_date - pd.DateOffset(months=6),
                 display_format='DD-MMM-YYYY',
                 first_day_of_week=1,
             ),
